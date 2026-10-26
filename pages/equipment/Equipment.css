@@ -1,0 +1,529 @@
+/* =========================
+   THIẾT BỊ: hồ sơ, tab, lịch sử, tra cứu lịch trống
+   (các lớp tabs / info-grid / timeline dùng chung cho cả module Cho thuê)
+========================= */
+
+.modal.modal-md {
+  max-width: 520px;
+}
+
+/* Tên thiết bị bấm được để mở hồ sơ */
+.link-cell {
+  display: block;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.link-cell:hover {
+  text-decoration: underline;
+}
+
+/* ----- Tab ----- */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+
+.tab {
+  padding: 9px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--navy);
+}
+
+.tab.active {
+  border-bottom-color: var(--primary);
+  color: var(--primary);
+}
+
+/* ----- Lưới thông tin ----- */
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 20px;
+}
+
+.info-item.full {
+  grid-column: 1 / -1;
+}
+
+.info-item dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.info-item dd {
+  margin-top: 2px;
+  color: var(--text);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.detail-actions.top {
+  margin: 0 0 12px;
+}
+
+/* ----- Dòng thời gian ----- */
+
+.timeline {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline li {
+  display: grid;
+  grid-template-columns: 150px auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.timeline li:last-child {
+  border-bottom: none;
+}
+
+.timeline-time {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.timeline-note {
+  color: var(--text-2);
+}
+
+/* ----- Tra cứu lịch trống ----- */
+
+.filter-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.filter-bar label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.filter-bar input,
+.filter-bar select {
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-weight: 400;
+}
+
+.summary-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 16px 0;
+}
+
+.conflict-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+@media (max-width: 760px) {
+  .info-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .timeline li {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
+/* ----- Ảnh thiết bị trong hồ sơ ----- */
+
+.eq-info-layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.eq-photo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.eq-photo img {
+  width: 200px;
+  height: 150px; /* cùng tỉ lệ 4:3 với khung căn chỉnh ảnh */
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  object-fit: cover;
+}
+
+/* Ảnh mới chọn, chưa lưu: viền vàng để dễ nhận biết */
+.eq-photo img.eq-photo-new {
+  border: 2px dashed #f59e0b;
+}
+
+.eq-photo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  cursor: pointer;
+}
+
+.thumb-button {
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+}
+
+@media (max-width: 760px) {
+  .eq-info-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ----- Ô Model: nhập tay hoặc đọc từ ảnh tem máy ----- */
+.model-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.model-input-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.model-ocr-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.model-ocr-result {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: 13px;
+}
+
+.model-ocr-thumb {
+  width: 72px;
+  height: 54px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.model-ocr-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.model-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.model-chip {
+  padding: 3px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text-1, #0f172a);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.model-chip:hover,
+.model-chip.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Tên thiết bị tự ghép (chỉ xem) */
+.name-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 10px 14px;
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.name-preview-rule {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #ffedd5;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.text-danger {
+  color: #dc2626;
+}
+
+/* ----- Ô ảnh thiết bị trong form ----- */
+.image-field {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.image-field-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 180px;
+  height: 130px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 2px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #64748b;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.image-field-box:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.image-field-box.has-image {
+  border-style: solid;
+  background: #fff;
+}
+
+.image-field-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-field-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.image-field-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.image-field-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ----- Tra cứu lịch trống: thanh lịch thuê ----- */
+
+.col-schedule {
+  min-width: 200px;
+  width: 22%;
+}
+
+.data-table td.col-result {
+  min-width: 210px;
+  max-width: 240px;
+}
+
+.sched-track {
+  position: relative;
+  height: 18px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  overflow: hidden;
+}
+
+.sched-range {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(22, 163, 74, 0.14);
+  border: 1.5px dashed #16a34a;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.sched-bk {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 3px;
+  min-width: 3px;
+}
+
+.bk-pending { background: #f59e0b; }
+.bk-approved { background: #3b82f6; }
+.bk-active { background: var(--navy-2); }
+.bk-overdue { background: #dc2626; }
+
+.sched-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.sched-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 10px 16px 4px;
+  font-size: 12.5px;
+  color: var(--text-2);
+  align-items: center;
+}
+
+.sched-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sched-legend .sched-bk {
+  position: static;
+  display: inline-block;
+  width: 18px;
+  height: 10px;
+}
+
+.sched-range-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 10px;
+  border: 1.5px dashed #16a34a;
+  background: rgba(22, 163, 74, 0.14);
+  border-radius: 3px;
+}
+
+.text-success {
+  color: #15803d;
+}
+
+/* ----- Tra cứu lịch trống: bộ lọc trên một hàng ----- */
+
+.availability-filters {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.availability-filters .filter-date {
+  width: 150px;
+}
+
+.availability-filters select {
+  width: 140px;
+}
+
+.availability-filters .search-field {
+  flex: 1;
+  min-width: 110px;
+}
+
+.availability-filters .search-field input {
+  width: 100%;
+  min-width: 0;
+}
+
+.heading-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.availability-filters .btn {
+  height: 38px;
+  white-space: nowrap;
+}
+
+.filter-bar .filter-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.filter-bar .filter-check input {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .availability-filters {
+    flex-wrap: wrap;
+  }
+}

@@ -1,0 +1,143 @@
+/* Biến màu và kiểu dùng chung cho mọi màn hình */
+
+:root {
+  --navy: #0f2747;
+  --navy-2: #173a63;
+  --primary: #1e4b8f;
+  --primary-hover: #183d75;
+  --accent: #f26b2a;
+  --text: #0f172a;
+  --text-2: #475569;
+  --muted: #94a3b8;
+  --line: #e2e8f0;
+  --bg: #f4f6fa;
+  --sidebar-w: 260px;
+  --sidebar-w-collapsed: 72px;
+  --header-h: 64px;
+}
+
+/* ----- Dòng bản quyền cuối trang ----- */
+
+.app-footer {
+  padding: 14px 24px 18px;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+/* ----- Màn chờ khi đang kiểm tra phiên đăng nhập ----- */
+
+.app-loading {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: var(--text-2);
+}
+
+/* ----- Bảng dữ liệu (dùng chung cho mọi màn danh sách) ----- */
+
+.table-wrapper {
+  overflow-x: auto; /* bảng rộng thì cuộn ngang trong thẻ, không làm vỡ trang */
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 11px 12px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+
+.data-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  background: #f8fafc;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* ----- Nhãn trạng thái ----- */
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge-danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.badge-success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge-neutral {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.badge-info {
+  background: #e0ecff;
+  color: #1e4b8f;
+}
+
+.badge-primary {
+  background: #1e4b8f;
+  color: #fff;
+}
+
+.badge-purple {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+/* ----- Ảnh nhỏ thiết bị ----- */
+
+.eq-thumb {
+  flex-shrink: 0;
+  display: block;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  background: #f1f5f9;
+}
+
+.eq-thumb-empty {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+/* Ô "ảnh + tên + mã" trong bảng */
+.thumb-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 300px;
+}
+
+.thumb-cell > div {
+  min-width: 0;
+}

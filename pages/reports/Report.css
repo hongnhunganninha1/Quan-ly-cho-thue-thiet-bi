@@ -1,0 +1,458 @@
+/* =========================
+   BÁO CÁO - THỐNG KÊ
+========================= */
+
+.report-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.kpi {
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.kpi span {
+  display: block;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.kpi strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 22px;
+  color: var(--navy);
+}
+
+.kpi small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Biểu đồ cột theo tháng (một chuỗi số liệu, một màu) */
+.bar-chart {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: end;
+  gap: 8px;
+  height: 220px;
+  padding: 16px 18px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.bar-col {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.bar {
+  width: 70%;
+  max-width: 44px;
+  min-height: 0;
+  border-radius: 4px 4px 0 0;
+  background: var(--primary);
+  transition: opacity 0.15s;
+}
+
+.bar-col:hover .bar {
+  opacity: 0.8;
+}
+
+/* Ô ghi chú số liệu khi rê chuột vào cột */
+.bar-tip {
+  position: absolute;
+  bottom: calc(100% - 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 9px;
+  border-radius: 6px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 2;
+}
+
+.bar-col:hover .bar-tip {
+  opacity: 1;
+}
+
+.bar-labels {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 8px;
+  padding: 6px 18px 14px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+/* Thanh tỉ lệ ngang (hiệu suất, lấp đầy bãi) */
+.meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 160px;
+}
+
+.meter-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--primary);
+}
+
+.meter-value {
+  width: 48px;
+  text-align: right;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Màu theo mức hiệu suất: Cao ≥ 80% · Khá 60–79% · Trung bình 30–59% · Thấp < 30% */
+.meter-fill.level-high,
+.level-dot.level-high {
+  background: #16a34a;
+}
+.meter-fill.level-good,
+.level-dot.level-good {
+  background: #2563eb;
+}
+.meter-fill.level-medium,
+.level-dot.level-medium {
+  background: #f59e0b;
+}
+.meter-fill.level-low,
+.level-dot.level-low {
+  background: #dc2626;
+}
+.level-text.level-high {
+  color: #15803d;
+}
+.level-text.level-good {
+  color: #1d4ed8;
+}
+.level-text.level-medium {
+  color: #b45309;
+}
+.level-text.level-low {
+  color: #b91c1c;
+}
+
+.level-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 13px;
+}
+
+.level-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.level-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* Thanh xếp chồng trạng thái thiết bị */
+.stack-bar {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  min-width: 160px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 12px 18px 0;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.data-table tfoot td {
+  font-weight: 700;
+  background: #f8fafc;
+  border-top: 2px solid var(--line);
+}
+
+@media (max-width: 760px) {
+  .bar-chart,
+  .bar-labels {
+    gap: 3px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+
+.report-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* =========================
+   IN / XUẤT PDF BÁO CÁO
+   Bản in theo mẫu báo cáo của doanh nghiệp Việt Nam (PrintSheet.jsx)
+========================= */
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  /* Ẩn toàn bộ giao diện web, chỉ in bản báo cáo */
+  .sidebar,
+  .dashboard-header,
+  .app-footer,
+  .no-print,
+  .toast {
+    display: none !important;
+  }
+
+  body,
+  .dashboard,
+  .dashboard-main {
+    background: #fff !important;
+  }
+
+  .dashboard-main,
+  .sidebar-collapsed .dashboard-main {
+    margin-left: 0 !important;
+    transition: none !important;
+  }
+
+  .dashboard-content {
+    padding: 0 !important;
+  }
+
+  .print-only {
+    display: block;
+  }
+
+  .print-sheet {
+    color: #000;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 12.5pt;
+    line-height: 1.35;
+  }
+
+  /* Đầu trang: tên đơn vị (trái) – mẫu số (phải) */
+  .ps-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  .ps-company,
+  .ps-form {
+    display: flex;
+    flex-direction: column;
+    font-size: 11pt;
+  }
+
+  .ps-company strong {
+    font-size: 12pt;
+  }
+
+  .ps-form {
+    align-items: center;
+    text-align: center;
+    min-width: 200px;
+  }
+
+  .ps-form em {
+    font-size: 10pt;
+  }
+
+  .ps-title {
+    margin: 14px 0 2px;
+    text-align: center;
+  }
+
+  .ps-title h1 {
+    font-size: 17pt;
+    font-weight: 700;
+    color: #000;
+    letter-spacing: 0.3px;
+  }
+
+  .ps-title p {
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  .ps-unit {
+    margin-bottom: 4px;
+    text-align: right;
+    font-style: italic;
+    font-size: 11pt;
+  }
+
+  .ps-section {
+    margin-top: 8px;
+  }
+
+  .ps-section-title {
+    margin: 8px 0 4px;
+    font-size: 12.5pt;
+    font-weight: 700;
+    color: #000;
+  }
+
+  /* Bảng kẻ ô đầy đủ */
+  .ps-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11pt;
+  }
+
+  .ps-table th,
+  .ps-table td {
+    padding: 3px 6px;
+    border: 1px solid #000;
+    vertical-align: middle;
+  }
+
+  .ps-table thead {
+    display: table-header-group; /* lặp lại tiêu đề cột ở mỗi trang */
+  }
+
+  .ps-table th {
+    font-weight: 700;
+    text-align: center;
+    background: #f2f2f2;
+  }
+
+  .ps-table tr.ps-marks th {
+    padding: 1px 4px;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 10pt;
+    background: #fff;
+  }
+
+  .ps-table tr {
+    break-inside: avoid;
+  }
+
+  .ps-left {
+    text-align: left;
+  }
+
+  .ps-right {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .ps-center {
+    text-align: center;
+  }
+
+  .ps-table tr.ps-group td {
+    font-weight: 700;
+  }
+
+  .ps-table tr.ps-total td {
+    font-weight: 700;
+    background: #f2f2f2;
+  }
+
+  .ps-empty {
+    padding: 10px;
+    font-style: italic;
+  }
+
+  .ps-note {
+    margin-top: 6px;
+    font-size: 11pt;
+    font-style: italic;
+  }
+
+  /* Ngày lập và chỗ ký */
+  .ps-sign {
+    margin-top: 8px;
+    break-inside: avoid;
+  }
+
+  .ps-place {
+    text-align: right;
+    font-style: italic;
+    padding-right: 30px;
+  }
+
+  .ps-sign-cols {
+    display: grid;
+    margin-top: 6px;
+    text-align: center;
+  }
+
+  .ps-sign-cols div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .ps-sign-cols em {
+    font-size: 11pt;
+  }
+
+  .ps-sign-cols span {
+    margin-top: 56px; /* khoảng trống để ký */
+    font-weight: 700;
+  }
+}
+
+/* Dòng tiêu đề nhóm thiết bị trong báo cáo */
+.data-table tr.group-row td {
+  padding-top: 9px;
+  padding-bottom: 9px;
+  background: #f1f5f9;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.data-table td.indent-cell {
+  padding-left: 32px !important;
+}

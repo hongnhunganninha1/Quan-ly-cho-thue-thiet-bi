@@ -1,0 +1,143 @@
+/* =========================
+   LOẠI THIẾT BỊ 2 CẤP: nhóm bên trái, loại bên phải
+========================= */
+
+.category-layout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.group-list {
+  padding: 8px;
+}
+
+.group-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px 10px;
+  color: var(--text-2);
+}
+
+.group-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto 16px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  transition: background 0.2s;
+}
+
+.group-item:hover {
+  background: #f8fafc;
+}
+
+.group-item.active {
+  background: #fff4ed;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.group-icon {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+.group-item.active .group-icon {
+  color: var(--accent);
+}
+
+.group-name {
+  line-height: 1.35;
+}
+
+.count-pill {
+  display: inline-block;
+  min-width: 26px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.type-panel {
+  min-height: 300px;
+}
+
+.type-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.type-panel-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  color: var(--navy);
+}
+
+.type-panel-header p {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.type-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.type-list {
+  list-style: none;
+}
+
+.type-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.type-item:last-child {
+  border-bottom: none;
+}
+
+.type-item:hover {
+  background: #f8fafc;
+}
+
+.type-name {
+  display: block;
+  font-weight: 600;
+}
+
+.type-info .cell-sub {
+  margin-top: 2px;
+}
+
+@media (max-width: 900px) {
+  .category-layout {
+    grid-template-columns: 1fr;
+  }
+}
