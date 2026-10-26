@@ -81,8 +81,3 @@ Build bản production:
 ```bash
 npm run build
 ```
-
-## Phạm Thị Hồng Nhung
-
-- **Họ tên:** Phạm Thị Hồng Nhung
-- **Email:** hongnhunganninha1@gmail.com
