@@ -1,0 +1,53 @@
+/* ----- Ô nhập ngày dd/mm/yyyy + nút lịch ----- */
+
+.date-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.date-input input[type="text"] {
+  width: 100%;
+  padding-right: 40px !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.date-input-btn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.date-input-btn:hover:not(:disabled) {
+  background: #eef2f7;
+  color: var(--primary);
+}
+
+.date-input-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Ô ngày của trình duyệt chỉ dùng để mở bảng lịch: ẩn nhưng vẫn nằm dưới nút để lịch hiện đúng chỗ */
+.date-input-picker {
+  position: absolute !important;
+  right: 0;
+  bottom: 0;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  opacity: 0;
+  pointer-events: none;
+}

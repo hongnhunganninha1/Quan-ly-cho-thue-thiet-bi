@@ -1,0 +1,81 @@
+/* ----- Nút ba chấm dọc và danh sách chức năng của một dòng ----- */
+
+.row-menu-button {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.row-menu-button:hover,
+.row-menu-button.open {
+  background: #eef2f7;
+  border-color: var(--line);
+  color: var(--primary);
+}
+
+.row-menu {
+  position: fixed;
+  z-index: 1200;
+  min-width: 190px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(15, 39, 71, 0.16);
+}
+
+.row-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.row-menu-item:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: var(--primary);
+}
+
+.row-menu-item.danger {
+  color: #dc2626;
+}
+
+.row-menu-item.danger:hover:not(:disabled) {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.row-menu-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.row-menu-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  color: inherit;
+}
+
+.row-menu-divider {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--line);
+}

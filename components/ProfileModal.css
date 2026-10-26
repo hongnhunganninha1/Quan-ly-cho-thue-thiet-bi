@@ -1,0 +1,44 @@
+/* Hộp thoại Hồ sơ cá nhân */
+.profile-top {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-bottom: 6px;
+}
+
+.profile-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-avatar-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.profile-avatar-actions .btn {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 12.5px;
+}
+
+.profile-name h3 {
+  font-size: 20px;
+  color: var(--navy);
+}
+
+.profile-name span {
+  color: var(--muted);
+}
+
+.profile-note {
+  margin-top: 8px;
+}
+
+.avatar-img {
+  object-fit: cover;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #e2e8f0;
+}

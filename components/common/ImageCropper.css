@@ -1,0 +1,89 @@
+/* ----- Hộp thoại căn chỉnh ảnh ----- */
+
+.cropper-backdrop {
+  z-index: 1300; /* nằm trên các hộp thoại khác */
+}
+
+.modal.cropper {
+  max-width: 440px;
+}
+
+.cropper-frame {
+  position: relative;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #0f172a;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.cropper-frame:active {
+  cursor: grabbing;
+}
+
+.cropper-frame img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  max-width: none;
+  pointer-events: none;
+}
+
+/* Khung tròn cho ảnh đại diện: làm tối phần ngoài vòng tròn */
+.cropper-frame.circle .cropper-mask {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 999px rgba(15, 23, 42, 0.55);
+  pointer-events: none;
+}
+
+.cropper-frame:not(.circle) .cropper-mask {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+.cropper-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.cropper-zoom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.cropper-zoom input {
+  flex: 1;
+  accent-color: var(--primary);
+}
+
+.cropper-zoom-value {
+  width: 44px;
+  text-align: right;
+  font-weight: 500;
+}
+
+.cropper-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.cropper-buttons .btn {
+  height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+}
