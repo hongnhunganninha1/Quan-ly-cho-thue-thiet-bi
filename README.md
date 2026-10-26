@@ -1,4 +1,4 @@
-# Hệ thống quản lý cho thuê thiết bị – Comacpro
+# Hệ thống quản lý cho thuê thiết bị 
 
 Ứng dụng web hỗ trợ doanh nghiệp cho thuê máy móc, thiết bị quản lý toàn bộ quy trình: từ hồ sơ thiết bị, khách hàng, hợp đồng thuê, bàn giao, thu hồi – quyết toán cho đến báo cáo thống kê.
 
