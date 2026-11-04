@@ -66,6 +66,7 @@ async function request(method, path, body) {
     if (res.status === 401 && token && onUnauthorized) onUnauthorized(data.message);
     const error = new Error(data.message || `Lỗi ${res.status}`);
     error.status = res.status;
+    error.field = data.field; // ô bị lỗi (VD: trùng số serial) để form tô đỏ
     throw error;
   }
   return data;

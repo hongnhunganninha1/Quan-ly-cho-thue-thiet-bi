@@ -14,7 +14,7 @@ import "./ProfileModal.css";
 const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 // Hộp thoại "Hồ sơ cá nhân": ai đăng nhập cũng xem được hồ sơ của mình,
-// tự sửa số điện thoại, email, địa chỉ và đổi ảnh đại diện.
+// tự sửa số điện thoại, địa chỉ và đổi ảnh đại diện (email công ty là tên đăng nhập nên không tự sửa).
 // Họ tên, CCCD, phòng ban, chức vụ… chỉ xem; muốn sửa thì nhờ Quản lý (màn Quản lý nhân viên).
 // onSaved({ avatarUrl }): báo cho App cập nhật ảnh trên thanh đầu trang.
 function ProfileModal({ onClose, onSaved }) {
@@ -49,7 +49,7 @@ function ProfileModal({ onClose, onSaved }) {
 
 // Form tách riêng để khởi tạo giá trị từ hồ sơ vừa tải về
 function ProfileForm({ profile, onClose, onSaved }) {
-  const [form, setForm] = useState({ phone: profile.phone || "", email: profile.email || "", address: profile.address || "" });
+  const [form, setForm] = useState({ phone: profile.phone || "", address: profile.address || "" });
   const [avatar, setAvatar] = useState(profile.avatar_url || ""); // "" | URL đang có | File mới chọn
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -110,7 +110,7 @@ function ProfileForm({ profile, onClose, onSaved }) {
     ["Phòng ban", profile.department_name],
     ["Chức vụ", profile.position],
     ["Ngày vào làm", formatDate(profile.hire_date)],
-    ["Tài khoản", `${profile.username} · ${profile.role_name}`],
+    ["Vai trò", profile.role_name],
     ["Đăng nhập gần nhất", formatDateTime(profile.last_login_at)],
   ];
 
@@ -177,8 +177,8 @@ function ProfileForm({ profile, onClose, onSaved }) {
           <input id="profile-phone" value={form.phone} onChange={set("phone")} maxLength={11} placeholder="VD: 0912345678" />
         </div>
         <div className="form-field">
-          <label htmlFor="profile-email">Email</label>
-          <input id="profile-email" type="email" value={form.email} onChange={set("email")} maxLength={100} />
+          <label htmlFor="profile-email">Email công ty (tên đăng nhập)</label>
+          <input id="profile-email" type="email" value={profile.email || ""} disabled />
         </div>
         <div className="form-field form-field-full">
           <label htmlFor="profile-address">Địa chỉ</label>

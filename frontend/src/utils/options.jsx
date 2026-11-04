@@ -9,14 +9,14 @@ export function renderOptions(options) {
   return groups.map((g) =>
     g.name === null ? (
       g.items.map((o) => (
-        <option key={o.value} value={o.value}>
+        <option key={o.value} value={o.value} disabled={o.disabled}>
           {o.label}
         </option>
       ))
     ) : (
       <optgroup key={g.name} label={g.name}>
         {g.items.map((o) => (
-          <option key={o.value} value={o.value}>
+          <option key={o.value} value={o.value} disabled={o.disabled}>
             {o.label}
           </option>
         ))}
@@ -34,19 +34,29 @@ export function categorySelectOptions(categories) {
     .map((c) => ({ value: String(c.id), label: c.name, group: c.parent_name }));
 }
 
-// Lựa chọn cho bộ lọc: chọn cả nhóm ("g" + id) hoặc từng loại; loại thụt vào dưới nhóm
-export function categoryFilterOptions(categories) {
-  const result = [];
-  for (const g of categories.filter((c) => c.parent_id === null)) {
-    result.push({ value: `g${g.id}`, label: g.name });
-    for (const c of categories.filter((x) => x.parent_id === g.id)) {
-      result.push({ value: String(c.id), label: `\u2003${c.name}` });
-    }
-  }
-  return result;
+// Lựa chọn dạng cây cho bộ lọc (TreeSelect): danh mục cấp 1 ("g" + id), mở ra các loại cấp 2
+export function categoryTreeOptions(categories) {
+  return categories
+    .filter((c) => c.parent_id === null)
+    .map((g) => ({
+      value: `g${g.id}`,
+      label: g.name,
+      children: categories.filter((x) => x.parent_id === g.id).map((c) => ({ value: String(c.id), label: c.name })),
+    }));
 }
 
 // Dòng có thuộc lựa chọn lọc không (dòng cần có category_id và group_id)
 export function matchCategory(row, value) {
   return value.startsWith("g") ? String(row.group_id) === value.slice(1) : String(row.category_id) === value;
+}
+
+// Lựa chọn bãi máy kèm số máy / sức chứa; bãi đã đầy thì không chọn được (trừ bãi máy đang đặt)
+export function warehouseOptions(warehouses, currentId = null) {
+  return warehouses
+    .filter((w) => w.status === "ACTIVE")
+    .map((w) => {
+      const full = w.capacity !== null && w.equipment_count >= w.capacity && String(w.id) !== String(currentId);
+      const usage = w.capacity !== null ? ` (${w.equipment_count}/${w.capacity}${full ? " – đã đầy" : ""})` : "";
+      return { value: String(w.id), label: `${w.code} – ${w.name}${usage}`, disabled: full };
+    });
 }

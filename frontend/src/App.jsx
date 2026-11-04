@@ -53,13 +53,38 @@ function App() {
   }, [loggedIn]);
 
   // ----- Thông báo -----
+  // Danh sách thông báo do máy chủ tính từ hợp đồng (không có bảng thông báo trong CSDL).
+  // Thông báo nào đã đọc thì trình duyệt tự nhớ theo từng tài khoản (localStorage).
+  const readKey = user ? `kltn_read_notifications_${user.id}` : null;
+  const loadReadIds = useCallback(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(readKey) || "[]"));
+    } catch {
+      return new Set();
+    }
+  }, [readKey]);
+  const saveReadIds = useCallback(
+    (ids) => {
+      try {
+        localStorage.setItem(readKey, JSON.stringify([...ids]));
+      } catch {
+        // trình duyệt chặn lưu trữ thì chỉ nhớ trong phiên này
+      }
+    },
+    [readKey]
+  );
 
   const loadNotifications = useCallback(() => {
     api
       .get("/notifications")
-      .then((list) => setNotifications(list))
+      .then((list) => {
+        const readIds = loadReadIds();
+        // Chỉ giữ dấu "đã đọc" của các thông báo còn hiện, để dữ liệu lưu không phình to dần
+        saveReadIds(new Set(list.map((n) => n.id).filter((id) => readIds.has(id))));
+        setNotifications(list.map((n) => ({ ...n, read: readIds.has(n.id) })));
+      })
       .catch(() => {}); // lỗi tải thông báo thì giữ danh sách cũ, không làm phiền người dùng
-  }, []);
+  }, [loadReadIds, saveReadIds]);
 
   useEffect(() => {
     if (!user) return;
@@ -68,22 +93,21 @@ function App() {
     return () => clearInterval(timer);
   }, [user, loadNotifications]);
 
-  const readNotification = (id) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-    api.patch(`/notifications/${id}/read`).catch(loadNotifications);
+  const markRead = (ids) => {
+    const readIds = loadReadIds();
+    ids.forEach((id) => readIds.add(id));
+    saveReadIds(readIds);
+    setNotifications((prev) => prev.map((n) => (ids.includes(n.id) ? { ...n, read: true } : n)));
   };
-
-  const readAllNotifications = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    api.patch("/notifications/read-all").catch(loadNotifications);
-  };
+  const readNotification = (id) => markRead([id]);
+  const readAllNotifications = () => markRead(notifications.map((n) => n.id));
 
   // ----- Đăng nhập / đổi mật khẩu -----
 
   // Trả về chuỗi lỗi, hoặc null nếu đăng nhập thành công
-  const handleLogin = async (username, password, remember) => {
+  const handleLogin = async (email, password, remember) => {
     try {
-      const data = await api.post("/auth/login", { username, password, remember });
+      const data = await api.post("/auth/login", { email, password, remember });
       saveToken(data.token, remember);
       setLoginNotice("");
       setUser(data.user);

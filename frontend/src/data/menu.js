@@ -1,4 +1,4 @@
-// Danh sách menu bên trái (theo các module của hệ thống).
+// Danh sách menu bên trái.
 // Mục có "children" sẽ có mũi tên để xổ ra các module con.
 // Mục có "roles" thì chỉ những vai trò đó mới thấy (ADMIN = Quản lý, STAFF = Nhân viên).
 // Thêm, bớt hoặc đổi tên module chỉ cần sửa ở file này.
@@ -11,15 +11,15 @@ import iconReport from "../assets/report.png";
 import iconUser from "../assets/user.svg";
 
 export const MENU = [
-  { key: "home", label: "Trang chủ", icon: iconHome },
+  { key: "home", label: "Tổng quan", icon: iconHome },
   {
     key: "user",
     label: "Người dùng",
     icon: iconUser,
     roles: ["ADMIN"],
     children: [
-      { key: "user-account", label: "Quản lý tài khoản" },
-      { key: "user-employee", label: "Quản lý nhân viên" },
+      { key: "user-employee", label: "Nhân viên" },
+      { key: "user-account", label: "Tài khoản" },
     ],
   },
   {
@@ -27,10 +27,10 @@ export const MENU = [
     label: "Danh mục",
     icon: iconCategory,
     children: [
-      { key: "category-customer", label: "Quản lý khách hàng" },
-      { key: "category-warehouse", label: "Quản lý bãi máy", roles: ["ADMIN"] },
-      { key: "category-type", label: "Quản lý loại thiết bị", roles: ["ADMIN"] },
-      { key: "category-brand", label: "Quản lý hãng thiết bị", roles: ["ADMIN"] },
+      { key: "category-customer", label: "Khách hàng" },
+      { key: "category-warehouse", label: "Bãi máy", roles: ["ADMIN"] },
+      { key: "category-type", label: "Loại thiết bị", roles: ["ADMIN"] },
+      { key: "category-brand", label: "Hãng thiết bị", roles: ["ADMIN"] },
     ],
   },
   {
@@ -38,9 +38,9 @@ export const MENU = [
     label: "Thiết bị",
     icon: iconEquipment,
     children: [
-      { key: "equipment-profile", label: "Quản lý hồ sơ thiết bị" },
-      { key: "equipment-price", label: "Quản lý giá thuê", roles: ["ADMIN"] },
-      { key: "equipment-schedule", label: "Tra cứu lịch trống" },
+      { key: "equipment-profile", label: "Danh sách thiết bị" },
+      { key: "equipment-price", label: "Giá thuê", roles: ["ADMIN"] },
+      { key: "equipment-schedule", label: "Lịch trống" },
     ],
   },
   {
@@ -48,22 +48,21 @@ export const MENU = [
     label: "Cho thuê",
     icon: iconRent,
     children: [
-      { key: "rent-contract", label: "Quản lý hợp đồng" },
-      { key: "rent-approve", label: "Duyệt hợp đồng", roles: ["ADMIN"] },
-      { key: "rent-handover", label: "Quản lý bàn giao" },
-      { key: "rent-return", label: "Quản lý thu hồi, bồi thường & quyết toán" },
+      { key: "rent-contract", label: "Hợp đồng thuê" },
+      { key: "rent-handover", label: "Bàn giao máy" },
+      { key: "rent-return", label: "Thu hồi máy" },
     ],
   },
   {
     key: "report",
-    label: "Báo cáo - Thống kê",
+    label: "Báo cáo",
     icon: iconReport,
     children: [
-      { key: "report-equipment", label: "Báo cáo kiểm kê thiết bị" },
-      { key: "report-revenue", label: "Báo cáo doanh thu", roles: ["ADMIN"] },
-      { key: "report-utilization", label: "Báo cáo hiệu suất sử dụng", roles: ["ADMIN"] },
-      { key: "report-contract", label: "Báo cáo hợp đồng thuê", roles: ["ADMIN"] },
-      { key: "report-debt", label: "Báo cáo công nợ khách hàng", roles: ["ADMIN"] },
+      { key: "report-equipment", label: "Kiểm kê thiết bị" },
+      { key: "report-revenue", label: "Doanh thu", roles: ["ADMIN"] },
+      { key: "report-utilization", label: "Hiệu suất thiết bị", roles: ["ADMIN"] },
+      { key: "report-contract", label: "Hợp đồng thuê", roles: ["ADMIN"] },
+      { key: "report-debt", label: "Công nợ khách hàng", roles: ["ADMIN"] },
     ],
   },
 ];
@@ -80,14 +79,17 @@ export function menuForRole(role) {
   );
 }
 
-// Trang key có được mở với vai trò role không (kiểm tra cả module cha)
+// Trang key có được mở với vai trò role không (kiểm tra cả module cha).
+// key có thể kèm tham số sau dấu ":" (VD "rent-contract:PENDING_APPROVAL" = mở Hợp đồng ở tab Chờ duyệt)
 export function canOpen(key, role) {
+  key = String(key).split(":")[0];
   const { parent, child } = findMenu(key);
   return canAccess(parent, role) && (!child || canAccess(child, role));
 }
 
 // Tìm mục đang chọn: trả về module cha và module con (nếu có)
 export function findMenu(key) {
+  key = String(key).split(":")[0];
   for (const parent of MENU) {
     if (parent.key === key) return { parent, child: null };
     const child = parent.children?.find((c) => c.key === key);

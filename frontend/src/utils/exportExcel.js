@@ -31,11 +31,16 @@ function colName(i) {
 }
 
 // Kiểu ô (theo thứ tự cellXfs trong styles.xml)
-const STYLE = { normal: 0, header: 1, text: 2, number: 3, title: 4, subtitle: 5 };
+const STYLE = {
+  normal: 0, header: 1, text: 2, number: 3, title: 4, subtitle: 5,
+  // dùng cho file báo cáo
+  bold: 6, boldText: 7, boldNumber: 8, decimal: 9, boldDecimal: 10, italic: 11, center: 12, boldCenter: 13, italicRight: 14,
+};
 
 function cell(ref, value, style) {
   if (value === null || value === undefined || value === "") return `<c r="${ref}" s="${style}"/>`;
-  if (style === STYLE.number && typeof value === "number" && Number.isFinite(value)) {
+  const numeric = [STYLE.number, STYLE.boldNumber, STYLE.decimal, STYLE.boldDecimal].includes(style);
+  if (numeric && typeof value === "number" && Number.isFinite(value)) {
     return `<c r="${ref}" s="${style}"><v>${value}</v></c>`;
   }
   return `<c r="${ref}" s="${style}" t="inlineStr"><is><t xml:space="preserve">${esc(value)}</t></is></c>`;
@@ -83,12 +88,13 @@ function sheetXml({ title, subtitle, columns, rows }) {
 const STYLES_XML =
   XML_HEAD +
   '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-  '<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0"/></numFmts>' +
-  '<fonts count="4">' +
+  '<numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0"/><numFmt numFmtId="165" formatCode="#,##0.0"/></numFmts>' +
+  '<fonts count="5">' +
   '<font><sz val="11"/><name val="Times New Roman"/></font>' +
   '<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Times New Roman"/></font>' +
   '<font><b/><sz val="14"/><name val="Times New Roman"/></font>' +
   '<font><i/><sz val="11"/><name val="Times New Roman"/></font>' +
+  '<font><b/><sz val="11"/><name val="Times New Roman"/></font>' +
   "</fonts>" +
   '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
   '<fill><patternFill patternType="solid"><fgColor rgb="FF1E4B8F"/><bgColor indexed="64"/></patternFill></fill></fills>' +
@@ -96,13 +102,24 @@ const STYLES_XML =
   '<border><left style="thin"><color rgb="FFBFC7D5"/></left><right style="thin"><color rgb="FFBFC7D5"/></right>' +
   '<top style="thin"><color rgb="FFBFC7D5"/></top><bottom style="thin"><color rgb="FFBFC7D5"/></bottom><diagonal/></border></borders>' +
   '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-  '<cellXfs count="6">' +
+  '<cellXfs count="15">' +
   '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
   '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
   '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>' +
   '<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment vertical="top"/></xf>' +
   '<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center"/></xf>' +
   '<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center"/></xf>' +
+  // 6 bold (không viền) · 7 bold có viền · 8 số bold · 9 số thập phân · 10 số thập phân bold
+  '<xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+  '<xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>' +
+  '<xf numFmtId="164" fontId="4" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/>' +
+  '<xf numFmtId="165" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>' +
+  '<xf numFmtId="165" fontId="4" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/>' +
+  // 11 nghiêng · 12 giữa có viền · 13 giữa bold có viền · 14 nghiêng căn phải
+  '<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+  '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top"/></xf>' +
+  '<xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top"/></xf>' +
+  '<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right"/></xf>' +
   "</cellXfs>" +
   '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
   "</styleSheet>";
@@ -136,7 +153,7 @@ function workbookFiles(opts) {
       '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
       "</Relationships>",
     "xl/styles.xml": STYLES_XML,
-    "xl/worksheets/sheet1.xml": sheetXml(opts),
+    "xl/worksheets/sheet1.xml": opts.sheetXml || sheetXml(opts),
   };
 }
 
@@ -226,4 +243,125 @@ export function exportExcel(opts) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ----- File Excel cho báo cáo (cùng nội dung với bản in) -----
+// report: { title, formCode, period, unit, sections: [{ title, columns: [{ label, align, width }], rows: [{ cells, kind }] }],
+//           notes, signers, preparedBy, company, rowNumbers }
+
+// Số trong báo cáo đang ở dạng chữ kiểu Việt Nam ("1.234.567", "45,5", "-") → đổi lại thành số để Excel tính được
+function toNumber(value) {
+  if (typeof value === "number") return value;
+  const t = String(value ?? "").trim();
+  if (t === "-" || t === "") return t === "-" ? 0 : "";
+  if (!/^-?[\d.]+(,\d+)?$/.test(t)) return t;
+  return Number(t.replace(/\./g, "").replace(",", "."));
+}
+
+function reportSheetXml(report) {
+  const { company, title, formCode, period, unit, sections, notes = [], signers = [], preparedBy } = report;
+  const width = 1 + Math.max(...sections.map((s) => s.columns.length), 1); // số cột (kể cả STT)
+  const last = colName(width - 1);
+  const out = [];
+  const merges = [];
+  let r = 0;
+  const line = (value, style, merge = true) => {
+    r += 1;
+    out.push(`<row r="${r}">${cell(`A${r}`, value, style)}</row>`);
+    if (merge) merges.push(`A${r}:${last}${r}`);
+  };
+
+  line(company.name, STYLE.bold, false);
+  line(`Địa chỉ: ${company.address}`, STYLE.normal, false);
+  line(`Mã số thuế: ${company.taxCode}`, STYLE.normal, false);
+  if (formCode) line(`Mẫu số: ${formCode} (Mẫu báo cáo quản trị nội bộ)`, STYLE.italic, false);
+  r += 1;
+  line(title.toUpperCase(), STYLE.title);
+  if (period) line(period, STYLE.subtitle);
+  if (unit) line(`Đơn vị tính: ${unit}`, STYLE.italicRight);
+
+  // Độ rộng cột: lấy theo cột rộng nhất của các bảng
+  const widths = Array.from({ length: width }, (_, i) => (i === 0 ? 6 : 12));
+  for (const s of sections) {
+    s.columns.forEach((c, i) => {
+      const w = c.width ? Math.round(c.width / 6) : 32;
+      widths[i + 1] = Math.max(widths[i + 1], Math.min(w, 45));
+    });
+  }
+
+  for (const s of sections) {
+    r += 1;
+    if (s.title) line(s.title, STYLE.bold, false);
+    r += 1;
+    out.push(
+      `<row r="${r}" ht="30" customHeight="1">${cell(`A${r}`, "STT", STYLE.header)}${s.columns
+        .map((c, i) => cell(`${colName(i + 1)}${r}`, c.label, STYLE.header))
+        .join("")}</row>`,
+    );
+    if (s.rows.length === 0) {
+      r += 1;
+      out.push(`<row r="${r}">${cell(`A${r}`, "Không có số liệu", STYLE.center)}</row>`);
+      merges.push(`A${r}:${colName(s.columns.length)}${r}`);
+    }
+    const stt = report.rowNumbers(s.rows);
+    s.rows.forEach((row, k) => {
+      r += 1;
+      const strong = row.kind === "group" || row.kind === "total";
+      const cells = [cell(`A${r}`, stt[k], strong ? STYLE.boldCenter : STYLE.center)];
+      s.columns.forEach((c, i) => {
+        const ref = `${colName(i + 1)}${r}`;
+        const raw = row.cells[i];
+        if (c.align === "right") {
+          const v = toNumber(raw);
+          const dec = typeof v === "number" && !Number.isInteger(v);
+          cells.push(cell(ref, v, strong ? (dec ? STYLE.boldDecimal : STYLE.boldNumber) : dec ? STYLE.decimal : STYLE.number));
+        } else if (c.align === "center") {
+          cells.push(cell(ref, raw, strong ? STYLE.boldCenter : STYLE.center));
+        } else {
+          cells.push(cell(ref, raw, strong ? STYLE.boldText : STYLE.text));
+        }
+      });
+      out.push(`<row r="${r}">${cells.join("")}</row>`);
+    });
+    if (s.note) line(s.note, STYLE.italic, false);
+  }
+
+  if (notes.length) r += 1;
+  notes.forEach((n) => line(n, STYLE.italic, false));
+
+  // Ngày lập và chức danh ký
+  const [y, m, d] = new Date().toISOString().slice(0, 10).split("-");
+  r += 1;
+  line(`Hà Nội, ngày ${d} tháng ${m} năm ${y}`, STYLE.italicRight);
+  if (signers.length) {
+    const step = Math.max(1, Math.floor(width / signers.length));
+    const cols = signers.map((_, i) => colName(Math.min(width - 1, i * step)));
+    r += 1;
+    out.push(`<row r="${r}">${signers.map((s, i) => cell(`${cols[i]}${r}`, s.toUpperCase(), STYLE.bold)).join("")}</row>`);
+    r += 1;
+    out.push(
+      `<row r="${r}">${signers
+        .map((_, i) => cell(`${cols[i]}${r}`, i === signers.length - 1 ? "(Ký, họ tên, đóng dấu)" : "(Ký, họ tên)", STYLE.italic))
+        .join("")}</row>`,
+    );
+    if (preparedBy) {
+      r += 4;
+      out.push(`<row r="${r}">${cell(`${cols[0]}${r}`, preparedBy, STYLE.bold)}</row>`);
+    }
+  }
+
+  const colsXml = widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("");
+  return (
+    XML_HEAD +
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    `<cols>${colsXml}</cols><sheetData>${out.join("")}</sheetData>` +
+    (merges.length ? `<mergeCells count="${merges.length}">${merges.map((x) => `<mergeCell ref="${x}"/>`).join("")}</mergeCells>` : "") +
+    '<pageSetup paperSize="9" orientation="' + (report.orientation === "portrait" ? "portrait" : "landscape") + '" fitToWidth="1" fitToHeight="0"/>' +
+    "</worksheet>"
+  );
+}
+
+// Xuất một báo cáo ra file Excel: thông tin công ty, tiêu đề, kỳ báo cáo, các bảng, ghi chú và chỗ ký
+export function exportReportExcel(report, fileName) {
+  exportExcel({ fileName, sheetName: report.sheetName || "Báo cáo", sheetXml: reportSheetXml(report) });
 }

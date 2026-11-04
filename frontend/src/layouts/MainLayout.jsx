@@ -64,12 +64,14 @@ function MainLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Mở trang không có quyền (VD: bấm thông báo dẫn tới trang của Quản lý) thì báo không có quyền
-  const Page = !canOpen(activeMenu, user.role) ? NoPermissionPage : PAGES[activeMenu] || ComingSoonPage;
+  // activeMenu có thể kèm tham số: "rent-contract:PENDING_APPROVAL" → trang rent-contract, mở sẵn tab Chờ duyệt
+  const [pageKey, navParam] = activeMenu.split(":");
+  const Page = !canOpen(pageKey, user.role) ? NoPermissionPage : PAGES[pageKey] || ComingSoonPage;
 
   return (
     <div className={`dashboard ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <Sidebar
-        activeMenu={activeMenu}
+        activeMenu={pageKey}
         onSelect={setActiveMenu}
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -90,7 +92,7 @@ function MainLayout({
 
         <section className="dashboard-content">
           {/* key: đổi trang thì vẽ lại từ đầu, không giữ trạng thái của trang trước */}
-          <Page key={activeMenu} activeMenu={activeMenu} onNavigate={setActiveMenu} user={user} />
+          <Page key={activeMenu} activeMenu={pageKey} navParam={navParam} onNavigate={setActiveMenu} user={user} />
         </section>
 
         <Footer />

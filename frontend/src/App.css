@@ -53,6 +53,21 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* Bảng trong hộp thoại: cho chữ xuống dòng để bảng vừa khung, hạn chế phải kéo thanh cuộn ngang.
+   Cột số tiền / số liệu (căn phải) vẫn giữ trên một dòng cho dễ đọc. */
+.modal .data-table th,
+.modal .data-table td {
+  white-space: normal;
+}
+.modal .data-table .align-right,
+.modal .data-table .nowrap,
+.modal .data-table .badge {
+  white-space: nowrap;
+}
+.modal .data-table .align-right .cell-sub {
+  white-space: normal; /* dòng phụ dưới số tiền (VD "cũ: …") được xuống dòng */
+}
+
 .data-table th {
   font-size: 12px;
   font-weight: 600;
@@ -140,4 +155,9 @@
 
 .thumb-cell > div {
   min-width: 0;
+}
+
+/* Lịch sử giá: danh sách hợp đồng áp dụng từng mức giá */
+.price-contract + .price-contract {
+  margin-top: 6px;
 }

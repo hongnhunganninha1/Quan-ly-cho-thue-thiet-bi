@@ -1,11 +1,11 @@
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { DATE_MAX, DATE_MIN, DATETIME_MAX, DATETIME_MIN } from "../../utils/dateLimits";
 import "./DateInput.css";
 
 // Ô nhập ngày luôn theo kiểu Việt Nam: dd/mm/yyyy (hoặc dd/mm/yyyy hh:mm).
 // Ô <input type="date"> của trình duyệt hiển thị theo ngôn ngữ của máy (máy tiếng Anh: mm/dd/yyyy),
 // dễ làm người dùng gõ nhầm ngày và tháng, nên ở đây gõ chữ theo dd/mm/yyyy; nút lịch bên phải vẫn mở
-// bảng chọn ngày của trình duyệt.
+// bảng chọn ngày của trình duyệt. Ô đã đủ ngày thì sửa từng phần (ngày / tháng / năm) như ô ngày của Windows.
 //   value   : "YYYY-MM-DD" (hoặc "YYYY-MM-DDTHH:mm") — giá trị gửi lên backend
 //   onChange(v): v = giá trị chuẩn khi gõ đủ và đúng; "" khi xoá trống; chuỗi đang gõ dở khi chưa hợp lệ
 //                (FormModal kiểm tra lại bằng dateError trước khi lưu)
@@ -34,6 +34,29 @@ function textToIso(text, withTime) {
   const iso = `${yyyy}-${mm}-${dd}`;
   return withTime ? `${iso}T${hh}:${mi}` : iso;
 }
+
+// Các phần của ô ngày: [vị trí bắt đầu, kết thúc, chữ số đầu lớn hơn số này thì tự đủ 2 số (VD ngày gõ 5 → 05)]
+const SEGMENTS = [
+  [0, 2, 3], // ngày
+  [3, 5, 1], // tháng
+  [6, 10, null], // năm
+  [11, 13, 2], // giờ
+  [14, 16, 5], // phút
+];
+const segmentsOf = (withTime) => SEGMENTS.slice(0, withTime ? 5 : 3);
+const segmentAt = (pos, withTime) => {
+  const segs = segmentsOf(withTime);
+  const i = segs.findIndex(([a, b]) => pos >= a && pos <= b);
+  return i === -1 ? segs.length - 1 : i;
+};
+// Giới hạn khi bấm mũi tên lên / xuống: ngày 1–31, tháng 1–12, năm, giờ 0–23, phút 0–59
+const RANGES = [
+  [1, 31],
+  [1, 12],
+  [1900, 2100],
+  [0, 23],
+  [0, 59],
+];
 
 // Tự chèn "/" và khoảng trắng, ":" khi gõ số: 07102026 → 07/10/2026
 function mask(raw, withTime) {
@@ -65,6 +88,91 @@ function DateInput({ value, onChange, withTime = false, min, max, id, disabled, 
     onChange(v);
   };
 
+  // Ô đã đủ ngày (dd/mm/yyyy): sửa theo từng phần như ô ngày của Windows — bấm vào ngày / tháng / năm thì
+  // bôi đen đúng phần đó, gõ số thì chỉ thay phần đó (không phải xoá cả ô gõ lại), ← → chuyển phần, ↑ ↓ tăng giảm.
+  const inputRef = useRef(null);
+  const typed = useRef({ seg: -1, digits: "" }); // các số đã gõ vào phần đang sửa
+  const pendingSel = useRef(null); // vùng cần bôi đen sau khi hiển thị lại
+  const fullLength = (withTime ? "dd/mm/yyyy hh:mm" : "dd/mm/yyyy").length;
+  const complete = text.length === fullLength;
+
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (pendingSel.current && el && document.activeElement === el) {
+      el.setSelectionRange(...pendingSel.current);
+    }
+    pendingSel.current = null;
+  });
+
+  const selectSegment = (i) => {
+    const [a, b] = segmentsOf(withTime)[i];
+    pendingSel.current = [a, b];
+    inputRef.current?.setSelectionRange(a, b);
+  };
+
+  const setSegment = (i, digits, nextSel) => {
+    const [a, b] = segmentsOf(withTime)[i];
+    const next = text.slice(0, a) + digits.padStart(b - a, "0").slice(-(b - a)) + text.slice(b);
+    setText(next);
+    emit(textToIso(next, withTime) || next);
+    pendingSel.current = nextSel;
+  };
+
+  // Bấm chuột vào ô đã đủ ngày → bôi đen phần ngày / tháng / năm tại chỗ bấm
+  const handleClick = (e) => {
+    if (!complete) return;
+    const pos = e.target.selectionStart ?? 0;
+    if (e.target.selectionEnd !== pos) return; // người dùng đang tự bôi đen (VD kéo chọn cả ô)
+    typed.current = { seg: -1, digits: "" };
+    selectSegment(segmentAt(pos, withTime));
+  };
+
+  const handleKeyDown = (e) => {
+    if (!complete || e.ctrlKey || e.metaKey || e.altKey) return;
+    const el = e.target;
+    const segs = segmentsOf(withTime);
+    const allSelected = el.selectionStart === 0 && el.selectionEnd === text.length;
+    const i = segmentAt(el.selectionStart ?? 0, withTime);
+    const [a, b, autoAfter] = segs[i];
+
+    if (/^\d$/.test(e.key) && !allSelected) {
+      e.preventDefault();
+      const prev = typed.current.seg === i ? typed.current.digits : "";
+      const digits = prev + e.key;
+      const done = digits.length >= b - a || (autoAfter !== null && digits.length === 1 && Number(e.key) > autoAfter);
+      if (done) {
+        typed.current = { seg: -1, digits: "" };
+        const n = Math.min(i + 1, segs.length - 1);
+        setSegment(i, digits, n === i ? [b, b] : [segs[n][0], segs[n][1]]);
+      } else {
+        typed.current = { seg: i, digits };
+        setSegment(i, digits, [a, b]);
+      }
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.preventDefault();
+      typed.current = { seg: -1, digits: "" };
+      selectSegment(Math.max(0, Math.min(segs.length - 1, i + (e.key === "ArrowLeft" ? -1 : 1))));
+    } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+      typed.current = { seg: -1, digits: "" };
+      const [lo, hi] = RANGES[i];
+      const cur = Number(text.slice(a, b));
+      let n = Number.isNaN(cur) ? (e.key === "ArrowUp" ? lo : hi) : cur + (e.key === "ArrowUp" ? 1 : -1);
+      if (n > hi) n = lo;
+      if (n < lo) n = hi;
+      setSegment(i, String(n), [a, b]);
+    } else if ((e.key === "Backspace" || e.key === "Delete") && !allSelected) {
+      // Chỉ xoá phần đang chọn (hiện chữ mẫu: dd / mm / yyyy…), các phần khác giữ nguyên, gõ số để điền lại
+      e.preventDefault();
+      typed.current = { seg: -1, digits: "" };
+      const holder = (withTime ? "dd/mm/yyyy hh:mm" : "dd/mm/yyyy").slice(a, b);
+      const next = text.slice(0, a) + holder + text.slice(b);
+      setText(next);
+      emit(next);
+      pendingSel.current = [a, b];
+    }
+  };
+
   const handleType = (e) => {
     const masked = mask(e.target.value, withTime);
     setText(masked);
@@ -89,6 +197,7 @@ function DateInput({ value, onChange, withTime = false, min, max, id, disabled, 
   return (
     <div className={`date-input ${className}`}>
       <input
+        ref={inputRef}
         id={id}
         type="text"
         inputMode="numeric"
@@ -96,6 +205,9 @@ function DateInput({ value, onChange, withTime = false, min, max, id, disabled, 
         placeholder={placeholder}
         value={text}
         onChange={handleType}
+        onKeyDown={handleKeyDown}
+        onClick={handleClick}
+        onBlur={() => (typed.current = { seg: -1, digits: "" })}
         disabled={disabled}
         aria-invalid={invalid || undefined}
         autoFocus={autoFocus}

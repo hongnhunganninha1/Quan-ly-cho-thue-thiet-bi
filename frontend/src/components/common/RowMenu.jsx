@@ -4,7 +4,7 @@ import { MoreVerticalIcon } from "./Icons";
 import "./RowMenu.css";
 
 // Nút ba chấm dọc ở cột Thao tác. Bấm vào thì hiện danh sách chức năng của dòng đó.
-// items: [{ key, label, icon?, danger?, disabled?, title?, onClick() }]
+// items: [{ key, label, icon?, danger?, disabled?, title?, onClick() }] – mục disabled sẽ không hiện
 // Danh sách được vẽ ra ngoài bảng (portal) để không bị khung cuộn của bảng che mất.
 function RowMenu({ items, label = "Thao tác" }) {
   const [open, setOpen] = useState(false);
@@ -48,7 +48,9 @@ function RowMenu({ items, label = "Thao tác" }) {
     };
   }, [open, close, place]);
 
-  const visible = items.filter(Boolean);
+  // Chức năng không dùng được ở dòng này (disabled) thì ẨN luôn thay vì hiện mờ:
+  // menu gọn hơn, người dùng chỉ thấy việc làm được (VD: khách đã có hợp đồng thì không hiện "Xoá").
+  const visible = items.filter((i) => i && !i.disabled);
   if (visible.length === 0) return null;
   const firstDanger = visible.findIndex((i) => i.danger);
 

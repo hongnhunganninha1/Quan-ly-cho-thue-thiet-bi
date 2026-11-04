@@ -4,8 +4,13 @@ import "./DonutChart.css";
 // Biểu đồ tròn dạng vành khuyên (donut).
 // data: [{ key, label, value, color }]; centerLabel: chữ nhỏ dưới tổng ở giữa vòng.
 // Rê chuột vào một phần (hoặc dòng chú thích) thì phần đó nổi lên và giữa vòng hiện số liệu của phần đó.
+// Bấm vào một phần / dòng chú thích thì giữ nổi bật phần đó (các phần khác mờ đi); bấm lại để bỏ chọn.
 function DonutChart({ data, centerLabel = "Tổng", size = 180 }) {
-  const [active, setActive] = useState(null);
+  const [hover, setHover] = useState(null);
+  const [picked, setPicked] = useState(null);
+  const active = hover || picked;
+  const setActive = setHover;
+  const toggle = (key) => setPicked((p) => (p === key ? null : key));
   const total = data.reduce((s, d) => s + d.value, 0);
   const r = 70;
   const stroke = 26;
@@ -50,6 +55,7 @@ function DonutChart({ data, centerLabel = "Tổng", size = 180 }) {
                 className="donut-segment"
                 onMouseEnter={() => setActive(s.key)}
                 onMouseLeave={() => setActive(null)}
+                onClick={() => toggle(s.key)}
               >
                 <title>{`${s.label}: ${s.value} (${percent(s.value)}%)`}</title>
               </circle>
@@ -73,9 +79,10 @@ function DonutChart({ data, centerLabel = "Tổng", size = 180 }) {
         {data.map((d) => (
           <li
             key={d.key}
-            className={active === d.key ? "active" : ""}
+            className={`${active === d.key ? "active" : ""} ${active && active !== d.key ? "dimmed" : ""}`}
             onMouseEnter={() => setActive(d.key)}
             onMouseLeave={() => setActive(null)}
+            onClick={() => toggle(d.key)}
           >
             <span className="donut-dot" style={{ background: d.color }}></span>
             <span className="donut-name">{d.label}</span>

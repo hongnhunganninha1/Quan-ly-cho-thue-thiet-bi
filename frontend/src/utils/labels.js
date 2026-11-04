@@ -9,15 +9,19 @@ export const EQUIPMENT_STATUS = {
 };
 
 // Trạng thái giao dịch của khách hàng
+// Trạng thái giao dịch hiển thị của khách hàng. CSDL chỉ lưu ACTIVE / STOPPED;
+// NEW = ACTIVE nhưng chưa có hợp đồng nào (khách mới, chưa phát sinh giao dịch)
 export const CUSTOMER_STATUS = {
+  NEW: { label: "Chưa giao dịch", badge: "badge-neutral" },
   ACTIVE: { label: "Đang giao dịch", badge: "badge-success" },
-  STOPPED: { label: "Ngừng giao dịch", badge: "badge-neutral" },
+  STOPPED: { label: "Ngừng giao dịch", badge: "badge-danger" },
 };
+export const customerTradeStatus = (c) => (c.status === "STOPPED" ? "STOPPED" : c.contract_count > 0 ? "ACTIVE" : "NEW");
 
 // Tình trạng máy lúc nhập về
 export const ITEM_CONDITION = {
-  NEW: { label: "Mới", badge: "badge-success" },
   USED: { label: "Đã qua sử dụng", badge: "badge-neutral" },
+  NEW: { label: "Mới", badge: "badge-success" },
 };
 
 export const CONTRACT_STATUS = {
@@ -51,6 +55,7 @@ export const PRICING_TYPE = {
 
 export const DOC_TYPES = {
   PHOTO: "Ảnh thiết bị",
+  NAMEPLATE: "Ảnh tem máy",
   CUSTOMS: "Tờ khai hải quan",
   CO: "Chứng nhận xuất xứ (CO)",
   CQ: "Chứng nhận chất lượng (CQ)",
