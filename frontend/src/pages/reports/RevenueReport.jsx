@@ -12,6 +12,17 @@ function RevenueReport({ user }) {
   const max = Math.max(1, ...months.map((m) => Number(m.revenue)));
   const years = Array.from(new Set([new Date().getFullYear(), ...(data?.years || [])])).sort((a, b) => b - a);
   const best = months.reduce((b, m) => (Number(m.revenue) > Number(b?.revenue || 0) ? m : b), null);
+  // Sắp xếp biểu đồ và bảng: theo tháng (mặc định) / doanh thu cao → thấp / thấp → cao
+  const [order, setOrder] = useState("month");
+  const sorted = [...months].sort((a, b) =>
+    order === "desc" ? b.revenue - a.revenue || a.period.localeCompare(b.period)
+      : order === "asc" ? a.revenue - b.revenue || a.period.localeCompare(b.period)
+        : a.period.localeCompare(b.period),
+  );
+  // Tháng đang được bấm chọn trên biểu đồ / bảng: nổi bật tháng đó, các tháng khác mờ đi
+  const [picked, setPicked] = useState(null);
+  const pick = (period) => setPicked((p) => (p === period ? null : period));
+  const monthName = (m) => `Tháng ${Number(m.period.slice(5))}`;
 
   return (
     <ReportShell
@@ -29,7 +40,7 @@ function RevenueReport({ user }) {
               { label: "Tháng", align: "left", width: 105 },
               { label: "Số hợp đồng quyết toán", align: "right", width: 90 },
               { label: "Tiền thuê máy", align: "right" },
-              { label: "Phí trễ hạn, vượt giờ", align: "right" },
+              { label: "Phí vượt giờ", align: "right" },
               { label: "Tiền bồi thường", align: "right" },
               { label: "Doanh thu (chưa VAT)", align: "right" },
               { label: "Thuế GTGT", align: "right" },
@@ -68,12 +79,19 @@ function RevenueReport({ user }) {
           "Ghi chú: Doanh thu ghi nhận theo ngày xác nhận quyết toán hợp đồng. (5) = (2) + (3) + (4); (7) = (5) + (6). Thuế GTGT không tính trên tiền bồi thường.",
         ],
       }}
-      canExport={Boolean(data)}
       filters={
         <div className="filter-bar">
           <label>
+            Sắp xếp
+            <select value={order} onChange={(e) => setOrder(e.target.value)}>
+              <option value="month">Theo tháng (1 → 12)</option>
+              <option value="desc">Doanh thu cao → thấp</option>
+              <option value="asc">Doanh thu thấp → cao</option>
+            </select>
+          </label>
+          <label>
             Năm
-            <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
+            <select value={year} onChange={(e) => { setYear(Number(e.target.value)); setPicked(null); }}>
               {years.map((y) => (
                 <option key={y} value={y}>
                   {y}
@@ -98,7 +116,7 @@ function RevenueReport({ user }) {
               <strong>{sum("contracts")}</strong>
             </div>
             <div className="kpi">
-              <span>Phí trễ hạn + vượt giờ</span>
+              <span>Phí vượt giờ</span>
               <strong>{formatMoney(sum("extra_fees"))}</strong>
             </div>
             <div className="kpi">
@@ -112,19 +130,26 @@ function RevenueReport({ user }) {
             <header className="panel-header">
               <h2>Doanh thu theo tháng</h2>
             </header>
-            <div className="bar-chart" role="img" aria-label={`Biểu đồ doanh thu các tháng năm ${year}`}>
-              {months.map((m) => (
-                <div className="bar-col" key={m.period}>
+            <div className={`bar-chart ${picked ? "has-pick" : ""}`} role="img" aria-label={`Biểu đồ doanh thu các tháng năm ${year}`}>
+              {sorted.map((m, i) => (
+                <div
+                  className={`bar-col ${picked === m.period ? "picked" : ""} ${i < 2 ? "tip-left" : i > sorted.length - 3 ? "tip-right" : ""}`}
+                  key={m.period}
+                  onClick={() => pick(m.period)}
+                  title="Bấm để làm nổi bật tháng này, bấm lại để bỏ"
+                >
                   <span className="bar-tip">
-                    Tháng {Number(m.period.slice(5))}: {formatMoney(m.revenue)} · {m.contracts} HĐ
+                    {monthName(m)}: {formatMoney(m.revenue)} · {m.contracts} HĐ
                   </span>
                   <div className="bar" style={{ height: `${(Number(m.revenue) / max) * 100}%` }} />
                 </div>
               ))}
             </div>
             <div className="bar-labels">
-              {months.map((m) => (
-                <span key={m.period}>T{Number(m.period.slice(5))}</span>
+              {sorted.map((m) => (
+                <span key={m.period} style={picked === m.period ? { fontWeight: 700, color: "var(--navy)" } : undefined}>
+                  T{Number(m.period.slice(5))}
+                </span>
               ))}
             </div>
 
@@ -135,16 +160,21 @@ function RevenueReport({ user }) {
                     <th>Tháng</th>
                     <th className="align-right">Số HĐ</th>
                     <th className="align-right">Tiền thuê</th>
-                    <th className="align-right">Phí trễ hạn + vượt giờ</th>
+                    <th className="align-right">Phí vượt giờ</th>
                     <th className="align-right">Bồi thường</th>
                     <th className="align-right">Doanh thu</th>
                     <th className="align-right">VAT</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {months.map((m) => (
-                    <tr key={m.period}>
-                      <td>Tháng {Number(m.period.slice(5))}</td>
+                  {sorted.map((m) => (
+                    <tr
+                      key={m.period}
+                      className={picked === m.period ? "row-picked" : picked ? "row-dimmed" : ""}
+                      onClick={() => pick(m.period)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <td>{monthName(m)}</td>
                       <td className="align-right">{m.contracts}</td>
                       <td className="align-right">{formatMoney(m.rental_revenue)}</td>
                       <td className="align-right">{formatMoney(m.extra_fees)}</td>

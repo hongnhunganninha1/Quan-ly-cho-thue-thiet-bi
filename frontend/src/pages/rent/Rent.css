@@ -385,16 +385,102 @@
 }
 
 /* Ô chọn khách hàng + nút thêm khách hàng mới trên cùng một hàng */
-.customer-pick {
+/* Ô tìm khách hàng có gợi ý (lập hợp đồng) */
+.customer-search {
+  position: relative;
+}
+
+.customer-search input {
+  width: 100%;
+}
+
+.customer-search-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 340px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+  padding: 4px;
+}
+
+.customer-option {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
 }
 
-.customer-pick select {
-  flex: 1;
-  min-width: 0;
+.customer-option.active {
+  background: #eef2f7;
 }
 
-.customer-pick .btn {
+.customer-option.selected .customer-option-main {
+  color: #1f3a5f;
+}
+
+.customer-option-sub {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.customer-option-add {
+  display: block;
+  margin-top: 4px;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 8px 8px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.customer-option-add strong {
+  color: #1f3a5f;
+}
+
+.customer-search-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.pricing-rule {
+  margin: 0 0 12px;
+}
+
+/* Nút "In biên bản" nhỏ trong bảng thiết bị của hợp đồng, nút In ở danh sách hợp đồng */
+.link-button {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--primary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  text-decoration: underline;
+}
+
+.btn-print {
+  padding: 6px 12px;
+  font-size: 13px;
   white-space: nowrap;
 }

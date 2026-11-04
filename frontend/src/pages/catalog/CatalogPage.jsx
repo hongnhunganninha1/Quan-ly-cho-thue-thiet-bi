@@ -3,14 +3,16 @@ import "./CatalogPage.css";
 import { api } from "../../api/client";
 import { normalizeText } from "../../utils/format";
 import FormModal from "../../components/common/FormModal";
+import PagerFooter, { PageSizeSelect } from "../../components/common/Pager";
+import usePager from "../../hooks/usePager";
 import { renderOptions } from "../../utils/options";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import RowMenu from "../../components/common/RowMenu";
 import NoticeDialog from "../../components/common/NoticeDialog";
 import Toast from "../../components/common/Toast";
-import { EditIcon, PlusIcon, RefreshIcon, SearchIcon, TrashIcon } from "../../components/common/Icons";
+import { EditIcon, PlusIcon, SearchIcon, TrashIcon } from "../../components/common/Icons";
+import TreeSelect from "../../components/common/TreeSelect";
 
-const DEFAULT_PAGE_SIZE = 10; // số dòng mỗi trang mặc định
 
 // Bộ lọc theo ngày tạo: số ngày tính lùi từ hôm nay (0 = hôm nay; "month" = tháng này)
 const DATE_RANGES = [
@@ -40,12 +42,12 @@ function inDateRange(value, range) {
 //   searchText(row)      : chuỗi dùng để tìm kiếm của một dòng
 //   searchPlaceholder    : gợi ý trong ô tìm kiếm
 //   filters              : các bộ lọc [{ key, label, options: [{ value, label, group? }], match?(row, value) }]
+//                          width: độ rộng riêng; tree: true → ô chọn dạng cây (options có children), allLabel = dòng "tất cả"
 //   sorts                : các cách sắp xếp [{ value, label, compare(a, b) }], cách đầu tiên là mặc định
 //   dateFilter           : lọc theo ngày tạo { key: "created_at", label: "Ngày nhập" }
-//   pageSizes            : các lựa chọn số dòng mỗi trang, VD [10, 20, 50]
 //   fields               : các ô nhập của form (xem FormModal);
 //                          hoặc fieldsFor(row) nếu form thêm và form sửa khác nhau (row = null khi thêm)
-//   emptyForm            : giá trị form khi thêm mới
+//   emptyForm            : giá trị form khi thêm mới; hoặc hàm (filterValues) => giá trị (VD điền sẵn theo bộ lọc đang chọn)
 //   rowLabel(row)        : tên hiển thị của một dòng trong câu hỏi xác nhận xoá
 //   deleteBlocked(row)   : trả về lý do không xoá được (để làm mờ nút xoá), hoặc null
 //   createSubtitle, editSubtitle(row): dòng phụ dưới tiêu đề form
@@ -57,6 +59,8 @@ function inDateRange(value, range) {
 //   refreshSignal        : số tăng lên thì tải lại danh sách (khi trang cha vừa thay đổi dữ liệu)
 //   onOpenForm(row)      : gọi mỗi khi mở form (VD: tải lại danh sách lựa chọn)
 //   afterSave(result, values, row): việc làm thêm sau khi lưu thành công (VD: tải ảnh thiết bị lên)
+//   initialFilters       : giá trị bộ lọc lúc mở trang, VD { category: "12" } (đi từ màn Loại thiết bị sang)
+//   openAddWith          : có thì mở sẵn form thêm mới, điền sẵn các giá trị này (VD { category_id: "12" })
 function CatalogPage({
   title,
   endpoint,
@@ -67,7 +71,6 @@ function CatalogPage({
   filters = [],
   sorts = [],
   dateFilter,
-  pageSizes,
   fields,
   fieldsFor,
   emptyForm = {},
@@ -86,17 +89,18 @@ function CatalogPage({
   refreshSignal = 0,
   onOpenForm,
   afterSave,
+  initialFilters = {},
+  openAddWith = null,
 }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [keyword, setKeyword] = useState("");
-  const [filterValues, setFilterValues] = useState({});
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(pageSizes?.[0] || DEFAULT_PAGE_SIZE);
+  const [filterValues, setFilterValues] = useState(initialFilters);
   const [sortValue, setSortValue] = useState(sorts[0]?.value || "");
   const [dateRange, setDateRange] = useState("");
-  const [editing, setEditing] = useState(null); // null: đóng form; { row: null }: thêm; { row }: sửa
+  // null: đóng form; { row: null }: thêm; { row }: sửa. openAddWith → mở sẵn form thêm với giá trị điền sẵn
+  const [editing, setEditing] = useState(() => (openAddWith ? { row: null, preset: openAddWith } : null));
   const [confirming, setConfirming] = useState(null); // { title, message, ..., run } đang hỏi xác nhận
   const [toast, setToast] = useState(null);
   const [notice, setNotice] = useState(null);
@@ -141,9 +145,9 @@ function CatalogPage({
     return sort ? [...list].sort(sort.compare) : list;
   }, [rows, keyword, filterValues, filters, searchText, sorts, sortValue, dateFilter, dateRange]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  // Đổi từ khoá / bộ lọc / sắp xếp thì quay về trang 1
+  const pager = usePager(filtered, JSON.stringify([keyword, filterValues, dateRange, sortValue]));
+  const pageRows = pager.pageRows;
 
   const closeToast = useCallback(() => setToast(null), []);
   const closeForm = useCallback(() => setEditing(null), []);
@@ -180,7 +184,7 @@ function CatalogPage({
       done(result);
       return null;
     } catch (err) {
-      return err.message;
+      return err; // kèm err.field để form tô đỏ ô bị trùng
     }
   };
 
@@ -220,7 +224,7 @@ function CatalogPage({
 
   // Giá trị ban đầu của form khi sửa: lấy từ dòng đang chọn, NULL đổi thành chuỗi rỗng
   const formValues = (row) => {
-    if (!row) return emptyForm;
+    if (!row) return { ...(typeof emptyForm === "function" ? emptyForm(filterValues) : emptyForm), ...(editing?.preset || {}) };
     const values = {};
     for (const f of formFields(row)) {
       if (f.type === "section") continue;
@@ -263,27 +267,39 @@ function CatalogPage({
               value={keyword}
               onChange={(e) => {
                 setKeyword(e.target.value);
-                setPage(1);
               }}
               aria-label="Tìm kiếm"
             />
           </label>
 
-          {filters.map((f) => (
+          {filters.map((f) =>
+            f.tree ? (
+              <TreeSelect
+                key={f.key}
+                className="toolbar-select"
+                value={filterValues[f.key] || ""}
+                onChange={(v) => setFilterValues((prev) => ({ ...prev, [f.key]: v }))}
+                options={f.options}
+                placeholder={f.label}
+                allLabel={f.allLabel || f.label}
+                ariaLabel={f.label}
+              />
+            ) : (
             <select
               key={f.key}
               className="toolbar-select"
               value={filterValues[f.key] || ""}
               onChange={(e) => {
                 setFilterValues((prev) => ({ ...prev, [f.key]: e.target.value }));
-                setPage(1);
               }}
               aria-label={f.label}
+              style={f.width ? { width: f.width } : undefined}
             >
-              <option value="">{f.label}: Tất cả</option>
+              <option value="">{f.label}</option>
               {renderOptions(f.options)}
             </select>
-          ))}
+            ),
+          )}
 
           {dateFilter && (
             <select
@@ -291,7 +307,6 @@ function CatalogPage({
               value={dateRange}
               onChange={(e) => {
                 setDateRange(e.target.value);
-                setPage(1);
               }}
               aria-label={dateFilter.label}
             >
@@ -313,39 +328,7 @@ function CatalogPage({
             </select>
           )}
 
-          {pageSizes && (
-            <select
-              className="toolbar-select"
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setPage(1);
-              }}
-              aria-label="Số dòng mỗi trang"
-            >
-              {pageSizes.map((n) => (
-                <option key={n} value={n}>
-                  {n} dòng / trang
-                </option>
-              ))}
-            </select>
-          )}
-
-          <span className="toolbar-count">
-            {filtered.length === rows.length ? `${rows.length} bản ghi` : `${filtered.length} / ${rows.length} bản ghi`}
-          </span>
-
-          <button
-            className="icon-button"
-            onClick={() => {
-              setLoading(true);
-              load();
-            }}
-            title="Tải lại"
-            aria-label="Tải lại"
-          >
-            <RefreshIcon />
-          </button>
+          <PageSizeSelect pager={pager} />
         </div>
 
         {/* Bảng dữ liệu */}
@@ -386,7 +369,7 @@ function CatalogPage({
                   const blocked = deleteBlocked(row);
                   return (
                     <tr key={row.id}>
-                      <td className="col-index">{(currentPage - 1) * pageSize + i + 1}</td>
+                      <td className="col-index">{pager.start + i + 1}</td>
                       {columns.map((c) => (
                         <td key={c.key} className={`${c.align === "right" ? "align-right" : ""} ${c.wrap ? "cell-wrap" : ""}`}>
                           {c.render ? c.render(row) : row[c.key] ?? <span className="text-muted">—</span>}
@@ -433,21 +416,7 @@ function CatalogPage({
         </div>
 
         {/* Phân trang */}
-        {totalPages > 1 && (
-          <div className="pagination">
-            <button disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>
-              ‹ Trước
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <button key={p} className={p === currentPage ? "active" : ""} onClick={() => setPage(p)}>
-                {p}
-              </button>
-            ))}
-            <button disabled={currentPage === totalPages} onClick={() => setPage(currentPage + 1)}>
-              Sau ›
-            </button>
-          </div>
-        )}
+        {!loadError && <PagerFooter pager={pager} />}
       </section>
 
       {editing && (

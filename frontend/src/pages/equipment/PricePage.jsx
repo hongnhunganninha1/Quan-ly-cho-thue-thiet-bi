@@ -1,21 +1,24 @@
 import { useState } from "react";
 import CatalogPage from "../catalog/CatalogPage";
 import StatusBadge from "../../components/common/StatusBadge";
-import { formatDate, formatMoney } from "../../utils/format";
+import { formatMoney } from "../../utils/format";
 import { EQUIPMENT_STATUS } from "../../utils/labels";
 import PriceHistoryModal from "./PriceHistoryModal";
+import EquipmentDetailModal from "./EquipmentDetailModal";
 import "./Equipment.css";
 
 // Màn Quản lý giá thuê (chỉ Quản lý): đặt giá theo giờ và theo ngày cho từng máy.
 // Giá được chép vào hợp đồng lúc lập, nên đổi giá không làm thay đổi hợp đồng cũ.
-// Mỗi lần đổi giá được ghi vào lịch sử (giá cũ → giá mới, lý do, người đổi).
+// Mỗi lần sửa giá được ghi vào "Lịch sử giá" (giá cũ → giá mới, lý do, người sửa).
+// Giá đã áp dụng cho từng hợp đồng xem ở Danh sách thiết bị → Lịch sử cho thuê.
 function PricePage() {
-  const [historyOf, setHistoryOf] = useState(null); // máy đang xem lịch sử giá
+  const [priceOf, setPriceOf] = useState(null); // máy đang xem lịch sử giá
+  const [viewing, setViewing] = useState(null); // máy đang xem chi tiết (bấm vào tên máy)
 
   return (
     <>
       <CatalogPage
-        title="Quản lý giá thuê"
+        title="Bảng giá thuê"
         endpoint="/equipments"
         itemName="giá thuê"
         hideAdd
@@ -32,14 +35,13 @@ function PricePage() {
           {
             key: "name",
             label: "Thiết bị",
+            // Bấm vào tên máy để mở hồ sơ chi tiết thiết bị (tên đã có loại thiết bị nên không ghi thêm)
             render: (e) => (
-              <>
-                <span className="cell-main">{e.name}</span>
-                <span className="cell-sub">{e.category_name}</span>
-              </>
+              <button className="link-cell" onClick={() => setViewing(e.id)} title="Xem chi tiết thiết bị">
+                {e.name}
+              </button>
             ),
           },
-          { key: "status", label: "Trạng thái", render: (e) => <StatusBadge map={EQUIPMENT_STATUS} value={e.status} /> },
           {
             key: "hourly_rate",
             label: "Giá theo giờ",
@@ -52,34 +54,32 @@ function PricePage() {
             align: "right",
             render: (e) => (e.daily_rate ? <strong>{formatMoney(e.daily_rate)}</strong> : <span className="text-muted">—</span>),
           },
-          {
-            key: "price_changed_at",
-            label: "Đổi giá gần nhất",
-            render: (e) => (e.price_changed_at ? formatDate(e.price_changed_at) : <span className="text-muted">—</span>),
-          },
+          { key: "status", label: "Trạng thái", render: (e) => <StatusBadge map={EQUIPMENT_STATUS} value={e.status} /> },
         ]}
         rowActions={(e) => [
-          { key: "history", label: "Lịch sử giá", disabled: !e.price_changed_at, onClick: () => setHistoryOf(e) },
+          { key: "price", label: "Lịch sử giá", disabled: !e.price_changed_at, onClick: () => setPriceOf(e) },
         ]}
         fields={[
-          { name: "hourly_rate", label: "Giá thuê theo giờ (₫)", type: "number", required: true, hint: "Dùng cho hợp đồng tính theo giờ và phí vượt giờ." },
-          { name: "daily_rate", label: "Giá thuê theo ngày (₫)", type: "number", required: true, hint: "Dùng cho hợp đồng tính theo ngày và phí trễ hạn." },
+          { name: "hourly_rate", label: "Giá thuê theo giờ (₫)", type: "money", required: true, hint: "Dùng cho hợp đồng tính theo giờ và phí vượt giờ." },
+          { name: "daily_rate", label: "Giá thuê theo ngày (₫)", type: "money", required: true, hint: "Dùng cho hợp đồng tính theo ngày (1 ngày = 1 ca 8 giờ). Phải thấp hơn 8 × giá giờ." },
           {
             name: "reason",
             label: "Lý do điều chỉnh",
             type: "textarea",
             full: true,
-            maxLength: 200,
+            maxLength: 255,
             placeholder: "VD: Điều chỉnh theo giá thị trường quý IV/2026",
             hint: "Được lưu vào lịch sử thay đổi giá.",
           },
         ]}
         formSize="md"
         rowLabel={(e) => `${e.code} – ${e.name}`}
-        editSubtitle={(e) => `${e.code} – ${e.name}. Hợp đồng đã lập vẫn giữ giá cũ.`}
+        // Chỉ nhắc "hợp đồng đã lập giữ giá cũ" khi máy đã có giá (đổi giá lần 2 trở đi)
+        editSubtitle={(e) => `${e.code} – ${e.name}.` + (e.daily_rate ? " Hợp đồng đã lập vẫn giữ giá cũ." : " Máy chưa có giá, đặt giá xong mới đưa vào hợp đồng được.")}
       />
-      {historyOf && <PriceHistoryModal equipment={historyOf} onClose={() => setHistoryOf(null)} />}
-    </>
+      {priceOf && <PriceHistoryModal equipment={priceOf} onClose={() => setPriceOf(null)} />}
+      {viewing && <EquipmentDetailModal id={viewing} onClose={() => setViewing(null)} />}
+          </>
   );
 }
 

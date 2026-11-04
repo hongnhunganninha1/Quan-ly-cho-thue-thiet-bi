@@ -86,7 +86,6 @@ function DebtReport({ user }) {
           },
         ],
       }}
-      canExport={Boolean(customers.length)}
     >
       {error && <div className="modal-error">{error}</div>}
       {loading && <p className="text-muted">Đang tải…</p>}

@@ -24,7 +24,7 @@
 .group-item {
   width: 100%;
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto 16px;
+  grid-template-columns: 28px minmax(0, 1fr) 16px;
   align-items: center;
   gap: 10px;
   padding: 10px;
@@ -58,6 +58,19 @@
 
 .group-name {
   line-height: 1.35;
+}
+
+/* Dòng phụ dưới tên nhóm: số loại · số máy */
+.group-name small {
+  display: block;
+  margin-top: 1px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.group-list-header .text-muted {
+  font-size: 12.5px;
 }
 
 .count-pill {
@@ -110,11 +123,12 @@
   list-style: none;
 }
 
+/* Mỗi loại 1 dòng: Tên | Mã | Tên tiếng Anh / mô tả | Số máy | ⋮ */
 .type-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(150px, 1.2fr) 96px minmax(0, 1fr) 64px 34px;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   padding: 12px 18px;
   border-bottom: 1px solid var(--line);
 }
@@ -128,16 +142,53 @@
 }
 
 .type-name {
-  display: block;
   font-weight: 600;
 }
 
-.type-info .cell-sub {
-  margin-top: 2px;
+.type-desc {
+  font-size: 13px;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.type-count {
+  text-align: right;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.type-count.is-zero {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.type-panel-actions .btn {
+  padding: 7px 14px;
 }
 
 @media (max-width: 900px) {
   .category-layout {
     grid-template-columns: 1fr;
   }
+
+  .type-item {
+    grid-template-columns: minmax(0, 1fr) auto 34px;
+  }
+
+  .type-code,
+  .type-desc {
+    display: none;
+  }
+}
+
+/* Bấm vào một loại → sang Danh sách thiết bị, lọc sẵn theo loại đó */
+.type-item.clickable {
+  cursor: pointer;
+}
+
+.type-item.clickable:hover .type-name {
+  color: var(--accent);
 }

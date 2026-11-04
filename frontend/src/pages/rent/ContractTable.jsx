@@ -1,27 +1,32 @@
 import StatusBadge from "../../components/common/StatusBadge";
+import RowMenu from "../../components/common/RowMenu";
+import { EyeIcon } from "../../components/common/Icons";
 import { formatDate, formatMoney, todayISO } from "../../utils/format";
-import { CONTRACT_STATUS, PRICING_TYPE } from "../../utils/labels";
+import { CONTRACT_STATUS } from "../../utils/labels";
 
 // Bảng danh sách hợp đồng dùng chung cho màn Quản lý hợp đồng và Duyệt hợp đồng
-function ContractTable({ rows, onOpen, emptyText }) {
+// onPrint(id): có thì thêm cột Thao tác (nút ba chấm) với "Xem chi tiết" và "In hợp đồng" (in được khi khách đã đặt cọc)
+function ContractTable({ rows, onOpen, emptyText, onPrint }) {
+  const cols = onPrint ? 8 : 7;
   return (
     <div className="table-wrapper">
       <table className="data-table">
         <thead>
           <tr>
             <th>Số hợp đồng</th>
-            <th>Khách hàng / Công trình</th>
-            <th>Thời gian</th>
+            <th>Khách hàng</th>
+            <th>Thời gian thuê</th>
             <th>Thiết bị</th>
             <th className="align-right">Tổng giá trị</th>
             <th>Người lập</th>
             <th>Trạng thái</th>
+            {onPrint && <th className="col-actions">Thao tác</th>}
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={7} className="table-message">
+              <td colSpan={cols} className="table-message">
                 {emptyText}
               </td>
             </tr>
@@ -32,24 +37,23 @@ function ContractTable({ rows, onOpen, emptyText }) {
                 <tr key={c.id} className="clickable" onClick={() => onOpen(c.id)}>
                   <td>
                     <strong>{c.contract_no}</strong>
-                    <span className="cell-sub">{PRICING_TYPE[c.pricing_type]}</span>
                   </td>
-                  <td className="cell-wrap">
+                  <td className="cell-wrap cell-compact">
                     <span className="cell-main">{c.customer_name}</span>
-                    <span className="cell-sub">{c.site_name}</span>
                   </td>
                   <td>
-                    {formatDate(c.start_date)} – {formatDate(c.end_date)}
+                    <span className="cell-main">{formatDate(c.start_date)} –</span>
+                    <span className="cell-main">{formatDate(c.end_date)}</span>
                     {overdue && <span className="danger-text">Quá hạn trả máy</span>}
                   </td>
-                  <td className="cell-wrap">
+                  <td className="cell-wrap cell-compact">
                     <span className="cell-main">{c.item_count} máy</span>
                     <span className="cell-sub">{c.equipment_codes}</span>
                   </td>
                   <td className="align-right">
                     <strong>{formatMoney(c.total_amount)}</strong>
                   </td>
-                  <td>{c.created_by_name}</td>
+                  <td style={{ whiteSpace: "normal", minWidth: 90 }}>{c.created_by_name}</td>
                   <td>
                     <StatusBadge map={CONTRACT_STATUS} value={c.status} />
                     {c.status === "APPROVED" && !c.deposit_paid_at && (
@@ -58,6 +62,22 @@ function ContractTable({ rows, onOpen, emptyText }) {
                       </span>
                     )}
                   </td>
+                  {onPrint && (
+                    <td className="col-actions" onClick={(e) => e.stopPropagation()}>
+                      <RowMenu
+                        items={[
+                          { key: "view", label: "Xem chi tiết", icon: <EyeIcon />, onClick: () => onOpen(c.id) },
+                          {
+                            key: "print",
+                            label: "In hợp đồng",
+                            disabled: !c.deposit_paid_at || c.status === "CANCELLED",
+                            title: c.deposit_paid_at ? "Xem trước rồi in / lưu PDF" : "In được sau khi khách đặt cọc",
+                            onClick: () => onPrint(c.id),
+                          },
+                        ]}
+                      />
+                    </td>
+                  )}
                 </tr>
               );
             })

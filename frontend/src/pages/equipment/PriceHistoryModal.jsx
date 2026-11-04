@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import useApiData from "../../hooks/useApiData";
-import { formatDateTime, formatMoney } from "../../utils/format";
+import { formatDate, formatDateTime, formatMoney } from "../../utils/format";
 
 // Mức thay đổi so với giá cũ, VD "+10%" / "−5%"
 function changeText(oldValue, newValue) {
@@ -18,8 +18,8 @@ function PriceCell({ oldValue, newValue }) {
     <>
       <span className="cell-main">{formatMoney(newValue)}</span>
       <span className="cell-sub">
-        {oldValue ? <>cũ: {formatMoney(oldValue)}</> : "đặt giá lần đầu"}
-        {change && <span className={change.cls}> · {change.text}</span>}
+        {oldValue ? <span className="nowrap">cũ: {formatMoney(oldValue)}</span> : <span className="nowrap">đặt giá lần đầu</span>}
+        {change && <span className={`${change.cls} nowrap`}> · {change.text}</span>}
       </span>
     </>
   );
@@ -37,7 +37,7 @@ function PriceHistoryModal({ equipment, onClose }) {
 
   return createPortal(
     <div className="modal-backdrop" onMouseDown={onClose}>
-      <div className="modal modal-lg" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="modal modal-xl" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
         <header className="modal-header">
           <div>
             <h2>Lịch sử thay đổi giá thuê</h2>
@@ -60,12 +60,13 @@ function PriceHistoryModal({ equipment, onClose }) {
                   <th className="align-right">Giá theo ngày</th>
                   <th>Lý do</th>
                   <th>Người thay đổi</th>
+                  <th>Hợp đồng áp dụng</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="table-message">
+                    <td colSpan={6} className="table-message">
                       {loading ? "Đang tải dữ liệu…" : "Máy chưa có lần thay đổi giá nào."}
                     </td>
                   </tr>
@@ -84,6 +85,21 @@ function PriceHistoryModal({ equipment, onClose }) {
                       </td>
                       <td className="cell-wrap">{h.reason || <span className="text-muted">—</span>}</td>
                       <td>{h.changed_by_name || <span className="text-muted">Hệ thống</span>}</td>
+                      <td>
+                        {h.contracts?.length ? (
+                          h.contracts.map((c) => (
+                            <div key={c.id} className="price-contract">
+                              <span className="cell-main nowrap">{c.contract_no}</span>
+                              <span className="cell-sub">
+                                {formatDate(c.start_date)} – {formatDate(c.end_date)} · {formatMoney(c.unit_price)}/
+                                {c.pricing_type === "DAY" ? "ngày" : "giờ"}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <span className="text-muted">Chưa có</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -91,7 +107,8 @@ function PriceHistoryModal({ equipment, onClose }) {
             </table>
           </div>
           <p className="form-hint" style={{ marginTop: 10 }}>
-            Hợp đồng đã lập vẫn giữ đơn giá tại thời điểm lập, không bị ảnh hưởng khi đổi giá.
+            Hợp đồng đã lập vẫn giữ đơn giá tại thời điểm lập, không bị ảnh hưởng khi đổi giá. Cột "Hợp đồng áp dụng" liệt kê các
+            hợp đồng lập trong thời gian mức giá đó đang áp dụng (không tính hợp đồng nháp, bị từ chối, đã huỷ).
           </p>
         </div>
       </div>

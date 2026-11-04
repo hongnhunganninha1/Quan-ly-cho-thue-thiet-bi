@@ -18,29 +18,19 @@ function AccountPage() {
   return (
     <CatalogPage
       afterSave={notifyUserChanged}
-      title="Quản lý tài khoản"
+      title="Tài khoản người dùng"
       description="Tài khoản đăng nhập của nhân viên. Mỗi nhân viên có tối đa một tài khoản."
       endpoint="/users"
       itemName="tài khoản"
       addLabel="Cấp tài khoản"
       refreshSignal={refresh}
-      searchPlaceholder="Tìm theo tên đăng nhập, họ tên, phòng ban…"
-      searchText={(u) => [u.username, u.full_name, u.employee_code, u.department_name].join(" ")}
+      searchPlaceholder="Tìm theo email, họ tên, phòng ban…"
+      searchText={(u) => [u.email, u.full_name, u.employee_code, u.department_name].join(" ")}
       filters={[
         { key: "role_id", label: "Vai trò", options: roles },
         { key: "status", label: "Trạng thái", options: [{ value: "ACTIVE", label: "Hoạt động" }, { value: "LOCKED", label: "Bị khoá" }] },
       ]}
       columns={[
-        {
-          key: "username",
-          label: "Tên đăng nhập",
-          render: (u) => (
-            <>
-              <strong>{u.username}</strong>
-              {u.is_me && <span className="cell-sub">(bạn)</span>}
-            </>
-          ),
-        },
         {
           key: "full_name",
           label: "Nhân viên",
@@ -57,6 +47,16 @@ function AccountPage() {
           key: "role_name",
           label: "Vai trò",
           render: (u) => <span className={`badge ${u.role_code === "ADMIN" ? "badge-info" : "badge-neutral"}`}>{u.role_name}</span>,
+        },
+        {
+          key: "email",
+          label: "Email đăng nhập",
+          render: (u) => (
+            <>
+              <strong>{u.email}</strong>
+              {u.is_me && <span className="cell-sub">(bạn)</span>}
+            </>
+          ),
         },
         {
           key: "last_login_at",
@@ -89,25 +89,23 @@ function AccountPage() {
                 required: true,
                 full: true,
                 emptyOption: freeEmployees.length ? "— Chọn nhân viên chưa có tài khoản —" : "Tất cả nhân viên đang làm việc đã có tài khoản",
-                options: freeEmployees.map((e) => ({ value: String(e.id), label: `${e.code} – ${e.full_name} (${e.department_name})` })),
-              },
-              {
-                name: "username",
-                label: "Tên đăng nhập",
-                required: true,
-                maxLength: 50,
-                placeholder: "VD: mai.nt",
-                hint: "Chữ thường không dấu, chữ số, dấu chấm.",
+                // Tên đăng nhập là email công ty: nhân viên chưa có email thì chưa cấp được
+                options: freeEmployees.map((e) => ({
+                  value: String(e.id),
+                  label: `${e.code} – ${e.full_name} · ${e.email || "chưa có email công ty"}`,
+                  disabled: !e.email,
+                })),
+                hint: "Tên đăng nhập là email công ty của nhân viên. Nhân viên chưa có email thì cập nhật ở mục Nhân viên trước.",
               },
               { name: "role_id", label: "Vai trò", type: "select", required: true, options: roles },
             ]
       }
       emptyForm={{ role_id: "2" }}
-      createSubtitle="Hệ thống tạo mật khẩu tạm; nhân viên phải đổi mật khẩu ở lần đăng nhập đầu."
-      editSubtitle={(u) => `${u.username} – ${u.full_name}`}
+      createSubtitle="Đăng nhập bằng email công ty. Hệ thống tạo mật khẩu tạm; nhân viên phải đổi mật khẩu ở lần đăng nhập đầu."
+      editSubtitle={(u) => `${u.email} – ${u.full_name}`}
       canEdit={(u) => !u.is_me}
       hideDelete
-      rowLabel={(u) => u.username}
+      rowLabel={(u) => u.email}
       rowActions={(u) => {
         if (u.is_me) return [];
         const actions = [
@@ -117,7 +115,7 @@ function AccountPage() {
             title: "Cấp lại mật khẩu tạm",
             confirm: {
               title: "Cấp lại mật khẩu",
-              message: `Tạo mật khẩu tạm mới cho ${u.username}? Mật khẩu cũ sẽ không dùng được nữa.`,
+              message: `Tạo mật khẩu tạm mới cho ${u.email}? Mật khẩu cũ sẽ không dùng được nữa.`,
               confirmLabel: "Cấp lại",
               tone: "primary",
             },
@@ -143,7 +141,7 @@ function AccountPage() {
             danger: true,
             confirm: {
               title: "Khoá tài khoản",
-              message: `Khoá tài khoản ${u.username} (${u.full_name})? Người này sẽ không đăng nhập được nữa.`,
+              message: `Khoá tài khoản ${u.email} (${u.full_name})? Người này sẽ không đăng nhập được nữa.`,
               confirmLabel: "Khoá",
             },
             run: () => api.patch(`/users/${u.id}/lock`),

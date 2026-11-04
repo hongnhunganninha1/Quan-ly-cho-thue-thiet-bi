@@ -4,7 +4,7 @@ import CatalogPage from "./CatalogPage";
 function BrandPage() {
   return (
     <CatalogPage
-      title="Quản lý hãng thiết bị"
+      title="Hãng thiết bị"
       description="Các hãng sản xuất thiết bị (Komatsu, Hitachi, Caterpillar…)."
       endpoint="/brands"
       itemName="hãng thiết bị"
@@ -28,7 +28,7 @@ function BrandPage() {
         { key: "equipment_count", label: "Số thiết bị", align: "right" },
       ]}
       fields={[
-        { name: "name", label: "Tên hãng", required: true, maxLength: 100, placeholder: "VD: Komatsu" },
+        { name: "name", label: "Tên hãng", required: true, maxLength: 50, placeholder: "VD: Komatsu" },
         { name: "country", label: "Quốc gia", maxLength: 50, placeholder: "VD: Nhật Bản" },
         { name: "website", label: "Website", full: true, maxLength: 255, placeholder: "https://…" },
       ]}

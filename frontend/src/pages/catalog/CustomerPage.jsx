@@ -1,11 +1,11 @@
 import { useState } from "react";
 import CatalogPage from "./CatalogPage";
 import CustomerRentalModal from "./CustomerRentalModal";
-import { CUSTOMER_EMPTY, CUSTOMER_FIELDS, CUSTOMER_TYPES as TYPES } from "./customerFields";
+import { CUSTOMER_EMPTY, CUSTOMER_FIELDS } from "./customerFields";
 import { HistoryIcon } from "../../components/common/Icons";
 import StatusBadge from "../../components/common/StatusBadge";
 import { api } from "../../api/client";
-import { CUSTOMER_STATUS, toOptions } from "../../utils/labels";
+import { CUSTOMER_STATUS, customerTradeStatus, toOptions } from "../../utils/labels";
 
 // Màn Quản lý khách hàng.
 // Nhân viên: thêm, cập nhật, tra cứu. Quản lý: thêm quyền ngừng / mở lại giao dịch và xoá khách nhập nhầm.
@@ -50,15 +50,14 @@ function CustomerPage({ user }) {
                   },
                 ]),
         ]}
-        title="Quản lý khách hàng"
+        title="Khách hàng"
         description="Danh sách doanh nghiệp và cá nhân thuê thiết bị của công ty."
         endpoint="/customers"
         itemName="khách hàng"
         searchPlaceholder="Tìm theo mã, tên, MST / CCCD, số điện thoại, email…"
-        searchText={(c) => [c.code, c.name, c.tax_code, c.id_number, c.phone, c.email, c.representative].join(" ")}
+        searchText={(c) => [c.code, c.name, c.id_number, c.phone, c.email, c.representative].join(" ")}
         filters={[
-          { key: "customer_type", label: "Loại khách hàng", options: TYPES },
-          { key: "status", label: "Trạng thái", options: toOptions(CUSTOMER_STATUS) },
+          { key: "status", label: "Trạng thái", options: toOptions(CUSTOMER_STATUS), match: (c, v) => customerTradeStatus(c) === v },
         ]}
         columns={[
           { key: "code", label: "Mã KH", render: (c) => <strong>{c.code}</strong> },
@@ -71,9 +70,7 @@ function CustomerPage({ user }) {
                 <span className="cell-main">{c.name}</span>
                 <span className="cell-sub">
                   {c.customer_type === "COMPANY"
-                    ? c.representative
-                      ? `Đại diện: ${c.representative}${c.representative_title ? ` (${c.representative_title})` : ""}`
-                      : "Doanh nghiệp"
+                    ? `Đại diện: ${c.representative}${c.representative_title ? ` (${c.representative_title})` : ""}`
                     : "Cá nhân"}
                 </span>
               </>
@@ -84,8 +81,8 @@ function CustomerPage({ user }) {
             label: "MST / CCCD",
             render: (c) => (
               <>
-                <span className="cell-main">{c.tax_code || c.id_number}</span>
-                <span className="cell-sub">{c.tax_code ? "Mã số thuế" : "CCCD"}</span>
+                <span className="cell-main">{c.id_number}</span>
+                <span className="cell-sub">{c.customer_type === "COMPANY" ? "Mã số thuế" : "CCCD"}</span>
               </>
             ),
           },
@@ -95,12 +92,12 @@ function CustomerPage({ user }) {
             render: (c) => (
               <>
                 <span className="cell-main">{c.phone}</span>
-                <span className="cell-sub">{c.email || "—"}</span>
+                {c.email && <span className="cell-sub">{c.email}</span>}
               </>
             ),
           },
           { key: "address", label: "Địa chỉ", wrap: true },
-          { key: "status", label: "Trạng thái", render: (c) => <StatusBadge map={CUSTOMER_STATUS} value={c.status} /> },
+          { key: "status", label: "Trạng thái", render: (c) => <StatusBadge map={CUSTOMER_STATUS} value={customerTradeStatus(c)} /> },
           {
             key: "contract_count",
             label: "Hợp đồng",

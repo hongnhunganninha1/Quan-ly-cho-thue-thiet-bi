@@ -51,7 +51,7 @@ function CustomerRentalModal({ customer, user, onClose }) {
                 <thead>
                   <tr>
                     <th>Hợp đồng</th>
-                    <th>Công trình</th>
+                    <th>Địa điểm nhận máy</th>
                     <th>Thời gian thuê</th>
                     <th>Thiết bị</th>
                     <th className="align-right">Giá trị HĐ</th>
@@ -74,8 +74,7 @@ function CustomerRentalModal({ customer, user, onClose }) {
                           </button>
                         </td>
                         <td className="cell-wrap">
-                          <span className="cell-main">{c.site_name}</span>
-                          <span className="cell-sub">{c.site_address}</span>
+                          <span className="cell-main">{c.delivery_address}</span>
                         </td>
                         <td>
                           {formatDate(c.start_date)} – {formatDate(c.end_date)}

@@ -48,7 +48,7 @@ function RevenueTrend({ current, previous }) {
   );
 }
 
-// Trang chủ (dashboard): số liệu tổng quan lấy từ API /dashboard
+// Tổng quan (dashboard): số liệu tổng quan lấy từ API /dashboard
 function HomePage({ onNavigate, user }) {
   const { data, error } = useApiData("/dashboard");
 
@@ -120,20 +120,22 @@ function HomePage({ onNavigate, user }) {
           />
         </section>
 
-        {/* Hợp đồng chờ duyệt */}
-        <section className="card">
+        {/* Hợp đồng chờ duyệt: danh sách cuộn trong khung, không làm thẻ cao hơn thẻ biểu đồ bên cạnh */}
+        <section className="card card-pending">
           <header className="card-header">
-            <h2>Hợp đồng chờ duyệt</h2>
-            <button className="link-button" onClick={() => onNavigate(isAdmin ? "rent-approve" : "rent-contract")}>
-              {isAdmin ? "Đến trang duyệt" : "Xem hợp đồng"}
+            <h2>
+              Hợp đồng chờ duyệt{data.pending.length > 0 && <span className="card-count">{data.pending.length}</span>}
+            </h2>
+            <button className="link-button" onClick={() => onNavigate("rent-contract:PENDING_APPROVAL")}>
+              Xem hợp đồng chờ duyệt
             </button>
           </header>
 
           {data.pending.length === 0 ? (
             <p className="card-empty">Không có hợp đồng nào đang chờ duyệt.</p>
           ) : (
-            <ul className="pending-list">
-              {data.pending.slice(0, 4).map((c) => (
+            <ul className="pending-list pending-scroll">
+              {data.pending.map((c) => (
                 <li key={c.id}>
                   <div>
                     <strong>{c.contract_no}</strong>

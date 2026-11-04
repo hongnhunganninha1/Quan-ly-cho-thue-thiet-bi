@@ -7,8 +7,11 @@ import useApiData from "../../hooks/useApiData";
 import StatusBadge from "../../components/common/StatusBadge";
 import FormModal from "../../components/common/FormModal";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
-import { formatDate, formatDateTime, formatMoney, nowLocalISO } from "../../utils/format";
+import { formatDate, formatDateTime, formatMoney, formatNumber, nowLocalISO } from "../../utils/format";
 import { CONTRACT_STATUS, DETAIL_STATUS, PAYMENT_STATUS, PRICING_TYPE } from "../../utils/labels";
+import { MeterPhotoThumb } from "../../components/common/MeterPhoto";
+import PrintPreview from "../../components/common/PrintPreview";
+import { contractDoc, ticketDoc } from "../../utils/printDocs";
 
 // Các bước của quy trình cho thuê để vẽ thanh tiến trình
 const FLOW = [
@@ -45,7 +48,8 @@ function flowIndex(c) {
 // onChanged(message): đã thay đổi dữ liệu; onEdit(contract): mở form sửa.
 function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
   const { data: c, error, reload } = useApiData(`/contracts/${id}`);
-  const [dialog, setDialog] = useState(null); // "approve" | "reject" | "deposit" | "cancel" | "delete" | "submit"
+  const [dialog, setDialog] = useState(null);
+  const [preview, setPreview] = useState(null); // hàm tải bản in đang xem trước (hợp đồng / biên bản) // "approve" | "reject" | "deposit" | "cancel" | "delete" | "submit"
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -72,7 +76,6 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
     };
 
   const isAdmin = user.role === "ADMIN";
-  const isCreator = c && c.created_by === user.id;
   const step = c ? flowIndex(c) : -1;
   const handedOver = c ? c.items.some((i) => i.status !== "PENDING") : false;
 
@@ -85,8 +88,7 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
               <h2>{c ? `Hợp đồng ${c.contract_no}` : "Hợp đồng"}</h2>
               {c && (
                 <p className="modal-subtitle">
-                  <StatusBadge map={CONTRACT_STATUS} value={c.status} /> &nbsp;Lập bởi {c.created_by_name} lúc{" "}
-                  {formatDateTime(c.created_at)}
+                  <StatusBadge map={CONTRACT_STATUS} value={c.status} /> &nbsp;Lập bởi {c.created_by_name}
                 </p>
               )}
             </div>
@@ -130,7 +132,7 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
                   <div className={`alert ${c.deposit_overdue ? "alert-danger" : "alert-warning"}`}>
                     {c.deposit_overdue
                       ? "Đã quá 3 ngày kể từ khi duyệt mà khách chưa đặt cọc. Quản lý có thể huỷ hợp đồng."
-                      : `Chờ khách đặt cọc (hạn 3 ngày kể từ ${formatDateTime(c.approved_at)}).`}
+                      : "Chờ khách đặt cọc (hạn 3 ngày kể từ khi duyệt)."}
                   </div>
                 )}
                 {c.status === "PENDING_APPROVAL" && (
@@ -139,9 +141,6 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
                     {c.last_reminded_at && ` Đã nhắc duyệt lần gần nhất lúc ${formatDateTime(c.last_reminded_at)}.`}
                   </div>
                 )}
-                {c.status === "PENDING_APPROVAL" && isAdmin && isCreator && (
-                  <div className="alert alert-info">Hợp đồng do bạn lập nên cần một Quản lý khác duyệt.</div>
-                )}
 
                 <div className="two-cols">
                   <div>
@@ -149,17 +148,16 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
                       <Info label="Khách hàng" value={`${c.customer.code} – ${c.customer.name}`} full />
                       <Info
                         label={c.customer.customer_type === "COMPANY" ? "Mã số thuế" : "Số CCCD"}
-                        value={c.customer.tax_code || c.customer.id_number}
+                        value={c.customer.id_number}
                       />
                       <Info label="Điện thoại" value={c.customer.phone} />
                       <Info label="Người đại diện" value={c.customer.representative} />
-                      <Info label="Công trình" value={c.site_name} />
-                      <Info label="Địa chỉ công trình" value={c.site_address} full />
+                      <Info label="Địa điểm nhận máy" value={c.delivery_address} full />
                       <Info label="Thời gian thuê" value={`${formatDate(c.start_date)} – ${formatDate(c.end_date)}`} />
                       <Info label="Hình thức tính giá" value={PRICING_TYPE[c.pricing_type]} />
                       <Info
                         label="Người duyệt"
-                        value={c.approved_by_name ? `${c.approved_by_name} (${formatDateTime(c.approved_at)})` : null}
+                        value={c.approved_by_name || null}
                       />
                       <Info label="Ghi chú" value={c.note} full />
                     </dl>
@@ -248,12 +246,24 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
                             <StatusBadge map={DETAIL_STATUS} value={i.status} />
                             {i.handover_no && (
                               <span className="cell-sub">
-                                {i.handover_no} · {formatDate(i.handover_at)}
+                                {i.handover_no} · {formatDate(i.handover_at)} · {formatNumber(i.handover_hours)} giờ máy{" "}
+                                {i.handover_meter_photo && (
+                                  <MeterPhotoThumb url={i.handover_meter_photo} title={`Đồng hồ giờ máy lúc bàn giao – ${i.handover_no}`} />
+                                )}{" "}
+                                <button type="button" className="link-button" onClick={() => setPreview(() => () => ticketDoc(id, "handover", i.handover_no))}>
+                                  In biên bản
+                                </button>
                               </span>
                             )}
                             {i.return_no && (
                               <span className="cell-sub">
-                                {i.return_no} · {formatDate(i.returned_at)}
+                                {i.return_no} · {formatDate(i.returned_at)} · {formatNumber(i.return_hours)} giờ máy{" "}
+                                {i.return_meter_photo && (
+                                  <MeterPhotoThumb url={i.return_meter_photo} title={`Đồng hồ giờ máy lúc thu hồi – ${i.return_no}`} />
+                                )}{" "}
+                                <button type="button" className="link-button" onClick={() => setPreview(() => () => ticketDoc(id, "return", i.return_no))}>
+                                  In biên bản
+                                </button>
                               </span>
                             )}
                           </td>
@@ -285,7 +295,7 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
                       Huỷ hợp đồng
                     </button>
                   )}
-                  {isAdmin && c.status === "PENDING_APPROVAL" && !isCreator && (
+                  {isAdmin && c.status === "PENDING_APPROVAL" && (
                     <>
                       <button className="btn btn-danger" onClick={() => setDialog("reject")}>
                         Từ chối
@@ -295,12 +305,11 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
                       </button>
                     </>
                   )}
-                  {/* Nhân viên nhắc Quản lý duyệt khi hợp đồng chờ quá lâu */}
+                  {/* Nhân viên nhắc Quản lý duyệt (bấm lúc nào cũng được khi hợp đồng đang chờ duyệt) */}
                   {c.status === "PENDING_APPROVAL" && !isAdmin && (
                     <button
                       className="btn btn-accent"
-                      disabled={Boolean(c.remind_block)}
-                      title={c.remind_block || "Gửi thông báo nhắc Quản lý duyệt hợp đồng này"}
+                      title="Gửi thông báo nhắc Quản lý duyệt hợp đồng này"
                       onClick={() => setDialog("remind")}
                     >
                       Nhắc duyệt
@@ -309,6 +318,12 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
                   {c.status === "APPROVED" && !c.deposit_paid_at && (
                     <button className="btn btn-primary" onClick={() => setDialog("deposit")}>
                       Xác nhận đặt cọc
+                    </button>
+                  )}
+                  {/* In hợp đồng: từ khi khách đã đặt cọc (kể cả sau khi quyết toán – in kèm biên bản quyết toán) */}
+                  {c.deposit_paid_at && c.status !== "CANCELLED" && (
+                    <button className="btn btn-primary" onClick={() => setPreview(() => () => contractDoc(id))} title="Xem trước rồi in / lưu PDF">
+                      In hợp đồng{c.status === "SETTLED" ? " & quyết toán" : ""}
                     </button>
                   )}
                 </div>
@@ -331,12 +346,10 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
       {dialog === "remind" && (
         <ConfirmDialog
           title="Nhắc duyệt hợp đồng"
-          message={`Gửi thông báo nhắc Quản lý duyệt hợp đồng ${c.contract_no} (đã chờ ${c.waited_days} ngày)? Mỗi hợp đồng nhắc được 1 lần mỗi ngày.`}
+          message={`Gửi thông báo nhắc Quản lý duyệt hợp đồng ${c.contract_no}${c.waited_days > 0 ? ` (đã chờ ${c.waited_days} ngày)` : ""}?`}
           confirmLabel="Gửi nhắc"
           tone="primary"
-          inputLabel="Lời nhắn (không bắt buộc)"
-          inputRequired={false}
-          onConfirm={act((note) => api.post(`/contracts/${id}/remind`, { note }))}
+          onConfirm={act(() => api.post(`/contracts/${id}/remind`))}
           onClose={() => setDialog(null)}
         />
       )}
@@ -351,7 +364,7 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
       {dialog === "approve" && (
         <ConfirmDialog
           title="Duyệt hợp đồng"
-          message={`Duyệt hợp đồng ${c.contract_no} – ${c.customer_name}, giá trị ${formatMoney(c.total_amount)}? Các máy sẽ được chuyển sang Đã giữ chỗ.`}
+          message={`Duyệt hợp đồng ${c.contract_no} – ${c.customer_name}, giá trị ${formatMoney(c.total_amount)}? Các máy tiếp tục được giữ chỗ cho hợp đồng này.`}
           confirmLabel="Duyệt"
           tone="primary"
           onConfirm={act(() => api.post(`/contracts/${id}/approve`))}
@@ -387,7 +400,7 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
             {
               name: "deposit_amount",
               label: "Số tiền cọc (₫)",
-              type: "number",
+              type: "money",
               required: true,
               full: true,
               hint: "Gợi ý: 30% giá trị hợp đồng.",
@@ -398,13 +411,19 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
             deposit_amount: String(Math.round((c.total_amount * 0.3) / 100000) * 100000),
             deposit_paid_at: nowLocalISO(),
           }}
-          submitLabel="Xác nhận"
-          onSubmit={act((values) =>
-            api.post(`/contracts/${id}/deposit`, { ...values, deposit_paid_at: values.deposit_paid_at.replace("T", " ") }),
-          )}
+          submitLabel="Xác nhận & in hợp đồng"
+          onSubmit={async (values) => {
+            // Lưu cọc xong thì mở luôn bản xem trước hợp đồng để in
+            const err = await act(() =>
+              api.post(`/contracts/${id}/deposit`, { ...values, deposit_paid_at: values.deposit_paid_at.replace("T", " ") }),
+            )();
+            if (!err) setPreview(() => () => contractDoc(id));
+            return err;
+          }}
           onClose={() => setDialog(null)}
         />
       )}
+      {preview && <PrintPreview load={preview} onClose={() => setPreview(null)} />}
     </>,
     document.body,
   );

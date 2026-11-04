@@ -10,7 +10,7 @@ const STATUSES = [
 function WarehousePage() {
   return (
     <CatalogPage
-      title="Quản lý bãi máy"
+      title="Bãi máy"
       description="Các bãi tập kết, cất giữ thiết bị của công ty."
       endpoint="/warehouses"
       itemName="bãi máy"
@@ -45,7 +45,7 @@ function WarehousePage() {
             w.status === "ACTIVE" ? (
               <span className="badge badge-success">Đang hoạt động</span>
             ) : (
-              <span className="badge badge-neutral">Ngừng hoạt động</span>
+              <span className="badge badge-danger">Ngừng hoạt động</span>
             ),
         },
       ]}

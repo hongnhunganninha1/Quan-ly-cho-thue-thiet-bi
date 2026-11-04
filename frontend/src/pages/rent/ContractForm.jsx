@@ -9,6 +9,16 @@ import { CUSTOMER_EMPTY, CUSTOMER_FIELDS } from "../catalog/customerFields";
 import { daysInclusive, formatDate, formatMoney, normalizeText, todayISO } from "../../utils/format";
 import { dateError } from "../../utils/dateLimits";
 import DateInput from "../../components/common/DateInput";
+import MoneyInput from "../../components/common/MoneyInput";
+import CustomerSearch from "./CustomerSearch";
+
+// Chữ vừa gõ ở ô tìm khách → điền sẵn vào form thêm: toàn chữ số thì là MST / CCCD, còn lại là tên.
+// Bỏ mã khách gõ kèm ở đầu (VD "KH09 – Công ty…" → "Công ty…") vì mã do hệ thống tự sinh.
+const prefillCustomer = (raw) => {
+  const text = (raw || "").replace(/^KH\d+\s*[-–—:]\s*/i, "").trim();
+  if (!text) return CUSTOMER_EMPTY;
+  return /^[\d-]+$/.test(text) ? { ...CUSTOMER_EMPTY, id_number: text } : { ...CUSTOMER_EMPTY, name: text };
+};
 
 // Tính tiền giống backend (utils/calc.js): VAT trên (tiền thuê − chiết khấu + vận chuyển)
 function calcTotals(lines, transportFee, discountRate, vatRate) {
@@ -19,6 +29,10 @@ function calcTotals(lines, transportFee, discountRate, vatRate) {
 }
 
 const num = (v) => (v === "" || v === null || v === undefined ? 0 : Number(v));
+// Ô số: bỏ số 0 thừa ở đầu khi gõ ("05" → "5", "0" gõ thêm 8 → "8"; vẫn giữ "0.5")
+const noLeadingZero = (v) => String(v).replace(/^0+(?=\d)/, "");
+// Bấm vào ô đang là 0 thì chọn sẵn cả ô, gõ số mới sẽ thay luôn số 0
+const selectOnFocus = (e) => e.target.select();
 
 // Form lập / sửa hợp đồng thuê.
 // contract: hợp đồng đang sửa (null khi lập mới); onCancel(); onSaved(message)
@@ -26,8 +40,7 @@ function ContractForm({ contract, onCancel, onSaved }) {
   const isEdit = Boolean(contract);
   const [form, setForm] = useState(() => ({
     customer_id: contract ? String(contract.customer_id) : "",
-    site_name: contract?.site_name || "",
-    site_address: contract?.site_address || "",
+    delivery_address: contract?.delivery_address || "",
     start_date: contract?.start_date?.slice(0, 10) || todayISO(),
     end_date: contract?.end_date?.slice(0, 10) || todayISO(),
     pricing_type: contract?.pricing_type || "DAY",
@@ -47,7 +60,7 @@ function ContractForm({ contract, onCancel, onSaved }) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const { data: customers, reload: reloadCustomers } = useApiData("/customers", []);
-  const [addingCustomer, setAddingCustomer] = useState(false); // đang mở form thêm khách hàng mới
+  const [addingCustomer, setAddingCustomer] = useState(null); // giá trị điền sẵn khi mở form thêm khách mới (null = đang đóng)
   const [customerNotice, setCustomerNotice] = useState("");
 
   // Khách mới chưa có trong danh mục: thêm ngay tại đây, thêm xong tự chọn vào hợp đồng
@@ -57,10 +70,10 @@ function ContractForm({ contract, onCancel, onSaved }) {
       reloadCustomers(); // tải lại danh sách để khách mới hiện trong ô chọn
       setForm((f) => ({ ...f, customer_id: String(r.id) }));
       setCustomerNotice(`${r.message} Đã chọn vào hợp đồng.`);
-      setAddingCustomer(false);
+      setAddingCustomer(null);
       return null;
     } catch (err) {
-      return err.message;
+      return err; // kèm err.field để form tô đỏ ô bị trùng
     }
   };
 
@@ -129,11 +142,12 @@ function ContractForm({ contract, onCancel, onSaved }) {
 
   const save = async (submit) => {
     if (!form.customer_id) return setError("Vui lòng chọn khách hàng.");
-    if (!form.site_name.trim() || !form.site_address.trim())
-      return setError("Vui lòng nhập tên và địa chỉ công trình.");
+    if (!form.delivery_address.trim()) return setError("Vui lòng nhập địa điểm nhận máy.");
     const dateMsg = dateError(form.start_date, "Ngày bắt đầu") || dateError(form.end_date, "Ngày kết thúc");
     if (dateMsg) return setError(dateMsg);
     if (!datesValid) return setError("Ngày kết thúc phải bằng hoặc sau ngày bắt đầu.");
+    if (form.pricing_type === "HOUR" && daysInclusive(form.start_date, form.end_date) > 2)
+      return setError("Thuê theo giờ chỉ áp dụng cho thời gian ngắn (trong ngày hoặc tối đa 2 ngày). Thuê dài hơn hãy chọn tính theo ngày.");
     if (lines.length === 0) return setError("Vui lòng chọn ít nhất một thiết bị.");
     const busy = lines.find((l) => l.availability !== "FREE");
     if (busy) return setError(`Máy ${busy.code} không còn trống trong thời gian này, hãy bỏ chọn.`);
@@ -173,10 +187,10 @@ function ContractForm({ contract, onCancel, onSaved }) {
 
       <div className="contract-form">
         <div>
-          {/* Khách hàng và công trình */}
+          {/* Khách hàng và địa điểm nhận máy */}
           <section className="panel">
             <header className="panel-header">
-              <h2>1. Khách hàng và công trình</h2>
+              <h2>1. Khách hàng và địa điểm nhận máy</h2>
             </header>
             <div className="panel-body">
               <div className="form-grid">
@@ -184,42 +198,35 @@ function ContractForm({ contract, onCancel, onSaved }) {
                   <label htmlFor="cf-customer">
                     Khách hàng <span className="required-mark">*</span>
                   </label>
-                  <div className="customer-pick">
-                    <select id="cf-customer" value={form.customer_id} onChange={set("customer_id")}>
-                      <option value="">— Chọn khách hàng —</option>
-                      {/* Khách đã ngừng giao dịch không lập hợp đồng mới (vẫn hiện nếu là khách của hợp đồng đang sửa) */}
-                      {customers
-                        .filter((c) => c.status !== "STOPPED" || String(c.id) === String(form.customer_id))
-                        .map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.code} – {c.name}
-                          </option>
-                        ))}
-                    </select>
-                    <button type="button" className="btn btn-secondary" onClick={() => setAddingCustomer(true)}>
-                      + Khách hàng mới
-                    </button>
-                  </div>
+                  <CustomerSearch
+                    id="cf-customer"
+                    customers={customers}
+                    value={form.customer_id}
+                    onChange={(id) => {
+                      setForm((prev) => ({ ...prev, customer_id: id }));
+                      setCustomerNotice("");
+                    }}
+                    onAddNew={(text) => setAddingCustomer(prefillCustomer(text))}
+                  />
                   {customerNotice && <small className="form-hint text-success">{customerNotice}</small>}
                   {customer && (
                     <small className="form-hint">
-                      {customer.customer_type === "COMPANY" ? `MST ${customer.tax_code}` : `CCCD ${customer.id_number}`}{" "}
-                      · ĐT {customer.phone}
-                      {customer.representative ? ` · Đại diện: ${customer.representative}` : ""}
+                      {customer.customer_type === "COMPANY" ? "MST" : "CCCD"} {customer.id_number} · ĐT {customer.phone}
+                      {customer.customer_type === "COMPANY" ? ` · Đại diện: ${customer.representative}` : ""}
                     </small>
                   )}
                 </div>
-                <div className="form-field">
-                  <label htmlFor="cf-site">
-                    Tên công trình <span className="required-mark">*</span>
-                  </label>
-                  <input id="cf-site" value={form.site_name} onChange={set("site_name")} maxLength={200} />
-                </div>
-                <div className="form-field">
+                <div className="form-field form-field-full">
                   <label htmlFor="cf-address">
-                    Địa chỉ công trình <span className="required-mark">*</span>
+                    Địa điểm nhận máy <span className="required-mark">*</span>
                   </label>
-                  <input id="cf-address" value={form.site_address} onChange={set("site_address")} maxLength={255} />
+                  <input
+                    id="cf-address"
+                    value={form.delivery_address}
+                    onChange={set("delivery_address")}
+                    maxLength={255}
+                    placeholder="Nơi giao máy cho khách, VD: Số 34 Láng Hạ, Phường Láng, TP Hà Nội"
+                  />
                 </div>
                 <div className="form-field">
                   <label htmlFor="cf-start">
@@ -274,6 +281,14 @@ function ContractForm({ contract, onCancel, onSaved }) {
               </div>
             </header>
             <div className="panel-body">
+              {/* Quy ước: mỗi hợp đồng chỉ một cách tính giá cho tất cả máy */}
+              <p className="form-hint pricing-rule">
+                Mọi máy trong hợp đồng tính chung một cách ({form.pricing_type === "DAY" ? "theo ngày" : "theo giờ"}). Khách vừa thuê
+                máy theo ngày vừa thuê máy theo giờ thì lập 2 hợp đồng riêng.{" "}
+                {form.pricing_type === "DAY"
+                  ? "Theo ngày: mỗi ngày được chạy 8 giờ (1 ca), vượt thì tính phí vượt giờ."
+                  : "Theo giờ: chỉ cho thuê ngắn hạn (trong ngày hoặc tối đa 2 ngày), nhập số giờ dự kiến từng máy (tối thiểu 4 giờ); dùng cả ngày thì thuê theo ngày rẻ hơn."}
+              </p>
               {lines.length > 0 && (
                 <div className="table-wrapper" style={{ marginBottom: 14 }}>
                   <table className="data-table">
@@ -307,10 +322,11 @@ function ContractForm({ contract, onCancel, onSaved }) {
                               <input
                                 className="duration-input"
                                 type="number"
-                                min="1"
+                                min="4"
                                 step="0.5"
                                 value={selected[l.id]}
-                                onChange={(e) => setSelected((p) => ({ ...p, [l.id]: e.target.value }))}
+                                onChange={(e) => setSelected((p) => ({ ...p, [l.id]: noLeadingZero(e.target.value) }))}
+                                onFocus={selectOnFocus}
                                 aria-label={`Số giờ thuê máy ${l.code}`}
                               />
                             )}
@@ -415,7 +431,8 @@ function ContractForm({ contract, onCancel, onSaved }) {
                         max="50"
                         step="0.5"
                         value={form.discount_rate}
-                        onChange={set("discount_rate")}
+                        onChange={(e) => setForm((p) => ({ ...p, discount_rate: noLeadingZero(e.target.value) }))}
+                        onFocus={selectOnFocus}
                         aria-label="Chiết khấu (%)"
                       />
                       %
@@ -427,13 +444,11 @@ function ContractForm({ contract, onCancel, onSaved }) {
                   <td>
                     <span className="summary-inline">
                       Vận chuyển
-                      <input
+                      <MoneyInput
                         className="wide"
-                        type="number"
-                        min="0"
-                        step="100000"
                         value={form.transport_fee}
-                        onChange={set("transport_fee")}
+                        onChange={(v) => setForm((prev) => ({ ...prev, transport_fee: v }))}
+                        onFocus={selectOnFocus}
                         aria-label="Phí vận chuyển"
                       />
                     </span>
@@ -449,7 +464,8 @@ function ContractForm({ contract, onCancel, onSaved }) {
                         min="0"
                         max="20"
                         value={form.vat_rate}
-                        onChange={set("vat_rate")}
+                        onChange={(e) => setForm((p) => ({ ...p, vat_rate: noLeadingZero(e.target.value) }))}
+                        onFocus={selectOnFocus}
                         aria-label="Thuế VAT (%)"
                       />
                       %
@@ -488,10 +504,10 @@ function ContractForm({ contract, onCancel, onSaved }) {
           title="Thêm khách hàng mới"
           subtitle="Mã khách hàng được tạo tự động. Thêm xong khách được chọn luôn vào hợp đồng."
           fields={CUSTOMER_FIELDS}
-          initialValues={CUSTOMER_EMPTY}
+          initialValues={addingCustomer}
           submitLabel="Thêm và chọn"
           onSubmit={addCustomer}
-          onClose={() => setAddingCustomer(false)}
+          onClose={() => setAddingCustomer(null)}
         />
       )}
     </div>

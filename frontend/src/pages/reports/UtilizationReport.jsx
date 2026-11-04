@@ -35,7 +35,7 @@ function UtilizationReport({ user }) {
 
   return (
     <ReportShell
-      title="Báo cáo hiệu suất sử dụng"
+      title="Báo cáo hiệu suất sử dụng thiết bị"
       description="Tỉ lệ thời gian mỗi máy được cho thuê (tính từ ngày bàn giao đến ngày thu hồi) trong kỳ đã chọn."
       user={user}
       print={
@@ -86,7 +86,6 @@ function UtilizationReport({ user }) {
           ],
         }
       }
-      canExport={Boolean(rows.length)}
       filters={
         <form
           className="filter-bar"

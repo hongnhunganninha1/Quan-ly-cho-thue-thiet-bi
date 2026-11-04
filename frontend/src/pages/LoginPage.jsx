@@ -9,7 +9,7 @@ import Footer from "../components/Footer";
 // onLogin(tài khoản, mật khẩu, ghi nhớ): gọi API đăng nhập, trả về chuỗi lỗi hoặc null nếu thành công;
 // notice: thông báo hiện phía trên form (ví dụ sau khi đổi mật khẩu, hết phiên đăng nhập).
 function LoginPage({ notice, onLogin }) {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState(""); // đăng nhập bằng email công ty
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -21,13 +21,13 @@ function LoginPage({ notice, onLogin }) {
     e.preventDefault(); // bấm Enter cũng đăng nhập được, không tải lại trang
     setInfo("");
 
-    if (!username.trim() || !password) {
-      setError("Vui lòng nhập tài khoản và mật khẩu.");
+    if (!email.trim() || !password) {
+      setError("Vui lòng nhập email và mật khẩu.");
       return;
     }
 
     setSubmitting(true);
-    const loginError = await onLogin(username.trim(), password, remember);
+    const loginError = await onLogin(email.trim(), password, remember);
     // Đăng nhập thành công thì màn này biến mất, không cần cập nhật gì thêm
     if (loginError) {
       setError(loginError);
@@ -55,16 +55,16 @@ function LoginPage({ notice, onLogin }) {
           {/* Thông báo (ví dụ: vừa đổi mật khẩu xong) */}
           {notice && <div className="login-notice">{notice}</div>}
 
-          {/* Tài khoản */}
+          {/* Email công ty (tên đăng nhập) */}
           <div className="form-group">
-            <label htmlFor="username">Tài khoản</label>
+            <label htmlFor="email">Email</label>
             <input
-              id="username"
-              type="text"
-              placeholder="Nhập tài khoản"
+              id="email"
+              type="email"
+              placeholder="VD: ten@comacpro.com"
               autoComplete="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 

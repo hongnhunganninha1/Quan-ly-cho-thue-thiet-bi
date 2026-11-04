@@ -1,4 +1,6 @@
+import { useState } from "react";
 import ReportShell from "./ReportShell";
+import DonutChart from "../../components/common/DonutChart";
 import useApiData from "../../hooks/useApiData";
 import { formatDate, formatReportNumber as n, todayISO } from "../../utils/format";
 import { EQUIPMENT_STATUS } from "../../utils/labels";
@@ -25,6 +27,29 @@ function EquipmentStatusReport({ user }) {
   });
   const partColumns = PARTS.map((p) => ({ label: EQUIPMENT_STATUS[PART_STATUS[p]].label, align: "right", width: 85 }));
 
+  // Biểu đồ theo trạng thái thiết bị
+  const statusChart = PARTS.map((p) => ({
+    key: p,
+    label: EQUIPMENT_STATUS[PART_STATUS[p]].label,
+    value: sum(p),
+    color: EQUIPMENT_STATUS[PART_STATUS[p]].color,
+  }));
+
+  // Biểu đồ theo danh mục cấp 1 (nhóm thiết bị): cộng các loại trong từng nhóm
+  const groups = [];
+  for (const r of rows) {
+    let g = groups.find((x) => x.id === r.group_id);
+    if (!g) {
+      g = { id: r.group_id, name: r.group_name, total: 0, available: 0, reserved: 0, rented: 0, inactive: 0 };
+      groups.push(g);
+    }
+    g.total += Number(r.total || 0);
+    for (const p of PARTS) g[p] += Number(r[p] || 0);
+  }
+  groups.sort((a, b) => b.total - a.total);
+  const [pickedGroup, setPickedGroup] = useState(null); // nhóm đang được bấm chọn để làm nổi bật
+  const maxGroup = Math.max(1, ...groups.map((g) => g.total));
+
   return (
     <ReportShell
       title="Báo cáo kiểm kê thiết bị"
@@ -38,12 +63,24 @@ function EquipmentStatusReport({ user }) {
           orientation: "portrait",
           sections: [
             {
-              title: "I. THEO NHÓM, LOẠI THIẾT BỊ",
+              title: "I. THEO TRẠNG THÁI THIẾT BỊ",
+              columns: [
+                { label: "Trạng thái", align: "left" },
+                { label: "Số máy", align: "right", width: 80 },
+                { label: "Tỷ lệ (%)", align: "right", width: 80 },
+              ],
+              rows: [
+                ...statusChart.map((x) => ({ cells: [x.label, n(x.value), n(total ? (x.value / total) * 100 : 0, 1)] })),
+                { kind: "total", cells: ["Tổng cộng", n(total), total ? n(100, 1) : "-"] },
+              ],
+            },
+            {
+              title: "II. THEO NHÓM, LOẠI THIẾT BỊ",
               columns: [{ label: "Nhóm / Loại thiết bị", align: "left" }, { label: "Tổng số máy", align: "right", width: 70 }, ...partColumns],
               rows: [...categoryRows, { kind: "total", cells: ["Tổng cộng", n(total), ...PARTS.map((p) => n(sum(p)))] }],
             },
             {
-              title: "II. THEO BÃI MÁY",
+              title: "III. THEO BÃI MÁY",
               columns: [
                 { label: "Bãi máy", align: "left" },
                 { label: "Sức chứa", align: "right", width: 65 },
@@ -71,7 +108,6 @@ function EquipmentStatusReport({ user }) {
           ],
         }
       }
-      canExport={Boolean(rows.length)}
     >
       {error && <div className="modal-error">{error}</div>}
       {loading && <p className="text-muted">Đang tải…</p>}
@@ -90,6 +126,69 @@ function EquipmentStatusReport({ user }) {
                 <small>{total ? Math.round((sum(p) / total) * 100) : 0}% đội máy</small>
               </div>
             ))}
+          </div>
+
+          <div className="report-charts">
+            <section className="catalog-card">
+              <header className="panel-header">
+                <h2>Theo trạng thái thiết bị</h2>
+              </header>
+              <div className="panel-body">
+                {total ? (
+                  <DonutChart data={statusChart} centerLabel="máy" size={210} />
+                ) : (
+                  <p className="text-muted">Chưa có thiết bị nào.</p>
+                )}
+              </div>
+            </section>
+
+            <section className="catalog-card">
+              <header className="panel-header">
+                <h2>Theo danh mục cấp 1 (nhóm thiết bị)</h2>
+              </header>
+              <div className="panel-body">
+                {groups.length === 0 ? (
+                  <p className="text-muted">Chưa có thiết bị nào.</p>
+                ) : (
+                  <div className={`hbar-chart ${pickedGroup ? "has-pick" : ""}`}>
+                    {groups.map((g) => (
+                      <div
+                        className={`hbar-row ${pickedGroup === g.id ? "picked" : ""}`}
+                        key={g.id}
+                        onClick={() => setPickedGroup((p) => (p === g.id ? null : g.id))}
+                        title="Bấm để làm nổi bật nhóm này, bấm lại để bỏ"
+                      >
+                        <span className="hbar-label" title={g.name}>
+                          {g.name}
+                        </span>
+                        <div className="hbar-track">
+                          <div className="hbar-fill" style={{ width: `${(g.total / maxGroup) * 100}%` }}>
+                            {PARTS.map((p) =>
+                              g[p] > 0 ? (
+                                <span
+                                  key={p}
+                                  title={`${EQUIPMENT_STATUS[PART_STATUS[p]].label}: ${g[p]}`}
+                                  style={{ flex: g[p], background: EQUIPMENT_STATUS[PART_STATUS[p]].color }}
+                                />
+                              ) : null,
+                            )}
+                          </div>
+                        </div>
+                        <strong className="hbar-value">{g.total}</strong>
+                      </div>
+                    ))}
+                    <div className="legend hbar-legend">
+                      {PARTS.map((p) => (
+                        <span key={p}>
+                          <i style={{ background: EQUIPMENT_STATUS[PART_STATUS[p]].color }} />
+                          {EQUIPMENT_STATUS[PART_STATUS[p]].label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
           </div>
 
           <section className="catalog-card">

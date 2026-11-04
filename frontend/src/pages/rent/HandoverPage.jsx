@@ -7,11 +7,17 @@ import useApiData from "../../hooks/useApiData";
 import FormModal from "../../components/common/FormModal";
 import Toast from "../../components/common/Toast";
 import StatusBadge from "../../components/common/StatusBadge";
-import { RefreshIcon, SearchIcon } from "../../components/common/Icons";
+import { SearchIcon } from "../../components/common/Icons";
+import PagerFooter, { PageSizeSelect } from "../../components/common/Pager";
+import usePager from "../../hooks/usePager";
 import ContractDetailModal from "./ContractDetailModal";
+import TicketDetailModal from "./TicketDetailModal";
 import RowMenu from "../../components/common/RowMenu";
+import PrintPreview from "../../components/common/PrintPreview";
+import { ticketDoc } from "../../utils/printDocs";
 import { EyeIcon } from "../../components/common/Icons";
-import { formatDate, formatDateTime, formatNumber, normalizeText, nowLocalISO } from "../../utils/format";
+import { MeterPhotoField } from "../../components/common/MeterPhoto";
+import { formatDate, formatNumber, normalizeText, nowLocalISO } from "../../utils/format";
 import { EQUIPMENT_STATUS } from "../../utils/labels";
 
 // Màn Quản lý bàn giao: giao từng máy của hợp đồng (đã duyệt, đã đặt cọc) cho khách tại công trình
@@ -21,6 +27,8 @@ function HandoverPage({ user }) {
   const [tab, setTab] = useState("pending");
   const [handing, setHanding] = useState(null); // máy đang lập phiếu bàn giao
   const [openContract, setOpenContract] = useState(null); // id hợp đồng đang mở xem chi tiết
+  const [preview, setPreview] = useState(null); // biên bản đang xem trước để in
+  const [viewing, setViewing] = useState(null); // phiếu bàn giao đang xem lại
   const [keyword, setKeyword] = useState("");
   const [toast, setToast] = useState(null);
   const closeToast = useCallback(() => setToast(null), []);
@@ -30,13 +38,15 @@ function HandoverPage({ user }) {
     history.reload();
   };
 
-  // Ô tra cứu: lọc theo số hợp đồng, khách hàng, công trình, mã / tên máy, số phiếu
+  // Ô tra cứu: lọc theo số hợp đồng, khách hàng, địa điểm nhận máy, mã / tên máy, số phiếu
   const kw = normalizeText(keyword.trim());
   const match = (...parts) => !kw || normalizeText(parts.filter(Boolean).join(" ")).includes(kw);
-  const pendingList = pending.data.filter((d) => match(d.contract_no, d.customer_name, d.site_name, d.code, d.name));
+  const pendingList = pending.data.filter((d) => match(d.contract_no, d.customer_name, d.delivery_address, d.code, d.name));
   const historyList = history.data.filter((h) =>
     match(h.handover_no, h.contract_no, h.customer_name, h.code, h.name, h.receiver_name),
   );
+  // Phân trang bảng của tab đang mở; đổi tab / từ khoá thì về trang 1
+  const pager = usePager(tab === "pending" ? pendingList : historyList, `${tab}|${keyword}`);
 
   // Số hợp đồng bấm được để mở xem chi tiết hợp đồng
   const contractLink = (id, no) => (
@@ -55,7 +65,12 @@ function HandoverPage({ user }) {
 
   const save = async (values) => {
     try {
-      const r = await api.post("/handovers", { ...values, contract_detail_id: handing.contract_detail_id });
+      // Gửi dạng form có file vì kèm ảnh chụp đồng hồ giờ máy
+      const fd = new FormData();
+      Object.entries({ ...values, contract_detail_id: handing.contract_detail_id }).forEach(([k, v]) =>
+        fd.append(k, v instanceof File ? v : String(v ?? "")),
+      );
+      const r = await api.upload("/handovers", fd);
       setHanding(null);
       setToast({ type: "success", message: r.message });
       reloadAll();
@@ -69,11 +84,8 @@ function HandoverPage({ user }) {
     <div className="catalog">
       <div className="page-heading">
         <div>
-          <h1>Quản lý bàn giao</h1>
+          <h1>Bàn giao thiết bị</h1>
         </div>
-        <button className="btn btn-secondary btn-icon" onClick={reloadAll}>
-          <RefreshIcon /> Tải lại
-        </button>
       </div>
 
       <section className="catalog-card">
@@ -91,11 +103,12 @@ function HandoverPage({ user }) {
             <SearchIcon />
             <input
               type="search"
-              placeholder="Tìm theo số hợp đồng, khách hàng, công trình, mã / tên máy, số phiếu…"
+              placeholder="Tìm theo số hợp đồng, khách hàng, địa điểm nhận máy, mã / tên máy, số phiếu…"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
             />
           </label>
+          <PageSizeSelect pager={pager} />
         </div>
 
         {tab === "pending" ? (
@@ -104,7 +117,7 @@ function HandoverPage({ user }) {
               <thead>
                 <tr>
                   <th>Hợp đồng</th>
-                  <th>Khách hàng / Công trình</th>
+                  <th>Khách hàng</th>
                   <th>Máy</th>
                   <th>Đang ở</th>
                   <th>Ngày bắt đầu thuê</th>
@@ -120,16 +133,13 @@ function HandoverPage({ user }) {
                     </td>
                   </tr>
                 ) : (
-                  pendingList.map((d) => {
+                  pager.pageRows.map((d) => {
                     const blocked = blockReason(d);
                     return (
                       <tr key={d.contract_detail_id}>
                         <td>{contractLink(d.contract_id, d.contract_no)}</td>
                         <td className="cell-wrap">
                           <span className="cell-main">{d.customer_name}</span>
-                          <span className="cell-sub">
-                            {d.site_name} – {d.site_address}
-                          </span>
                         </td>
                         <td>
                           <span className="cell-main">
@@ -175,45 +185,52 @@ function HandoverPage({ user }) {
               <thead>
                 <tr>
                   <th>Số phiếu</th>
-                  <th>Thời điểm</th>
                   <th>Hợp đồng / Khách hàng</th>
-                  <th>Máy</th>
-                  <th>Từ bãi</th>
+                  <th>Máy / Từ bãi</th>
                   <th className="align-right">Giờ máy</th>
-                  <th className="align-right">Nhiên liệu</th>
                   <th>Người nhận</th>
-                  <th>Người giao</th>
+                  <th className="col-actions">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {historyList.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="table-message">
+                    <td colSpan={6} className="table-message">
                       {kw ? "Không tìm thấy kết quả phù hợp." : "Chưa có phiếu bàn giao nào."}
                     </td>
                   </tr>
                 ) : (
-                  historyList.map((h) => (
+                  pager.pageRows.map((h) => (
                     <tr key={h.id}>
                       <td>
-                        <strong>{h.handover_no}</strong>
+                        <button className="link-cell" onClick={() => setViewing(h)} title="Xem phiếu">
+                          <strong>{h.handover_no}</strong>
+                        </button>
                       </td>
-                      <td>{formatDateTime(h.handover_at)}</td>
-                      <td>
+                      <td className="cell-wrap cell-compact">
                         {contractLink(h.contract_id, h.contract_no)}
                         <span className="cell-sub">{h.customer_name}</span>
                       </td>
-                      <td>
-                        {h.code} – {h.name}
+                      <td className="cell-wrap">
+                        <span className="cell-main">
+                          {h.code} – {h.name}
+                        </span>
+                        <span className="cell-sub">Từ bãi: {h.warehouse_name || "—"}</span>
                       </td>
-                      <td>{h.warehouse_name || "—"}</td>
-                      <td className="align-right">{formatNumber(h.operating_hours)}</td>
-                      <td className="align-right">{h.fuel_level !== null ? `${h.fuel_level}%` : "—"}</td>
-                      <td>
-                        <span className="cell-main">{h.receiver_name}</span>
-                        <span className="cell-sub">{h.receiver_phone}</span>
+                      <td className="align-right">
+                        {formatNumber(h.operating_hours)}
+                        <span className="cell-sub">{h.fuel_level !== null ? `Nhiên liệu ${h.fuel_level}%` : ""}</span>
                       </td>
-                      <td>{h.handed_by_name}</td>
+                      <td>{h.receiver_name}</td>
+                      <td className="col-actions">
+                        <RowMenu
+                          items={[
+                            { key: "ticket", label: "Xem phiếu & ảnh đồng hồ", icon: <EyeIcon />, onClick: () => setViewing(h) },
+                            { key: "print", label: "In biên bản", onClick: () => setPreview(() => () => ticketDoc(h.contract_id, "handover", h.handover_no)) },
+                            { key: "view", label: "Xem hợp đồng", onClick: () => setOpenContract(h.contract_id) },
+                          ]}
+                        />
+                      </td>
                     </tr>
                   ))
                 )}
@@ -221,8 +238,10 @@ function HandoverPage({ user }) {
             </table>
           </div>
         )}
+        <PagerFooter pager={pager} />
       </section>
 
+      {preview && <PrintPreview load={preview} onClose={() => setPreview(null)} />}
       {openContract && (
         <ContractDetailModal
           id={openContract}
@@ -236,10 +255,22 @@ function HandoverPage({ user }) {
         />
       )}
 
+      {viewing && (
+        <TicketDetailModal
+          kind="handover"
+          ticket={viewing}
+          onClose={() => setViewing(null)}
+          onOpenContract={(id) => {
+            setViewing(null);
+            setOpenContract(id);
+          }}
+        />
+      )}
+
       {handing && (
         <FormModal
           title="Lập phiếu bàn giao"
-          subtitle={`${handing.contract_no} · ${handing.code} – ${handing.name} → ${handing.site_name}`}
+          subtitle={`${handing.contract_no} · ${handing.code} – ${handing.name} → ${handing.delivery_address}`}
           fields={[
             { name: "handover_at", label: "Thời điểm bàn giao", type: "datetime-local", required: true },
             {
@@ -249,9 +280,18 @@ function HandoverPage({ user }) {
               required: true,
               hint: `Không nhỏ hơn số đang ghi nhận (${formatNumber(handing.operating_hours)}).`,
             },
+            {
+              name: "meter_photo",
+              label: "Ảnh chụp đồng hồ giờ máy",
+              type: "custom",
+              required: true,
+              full: true,
+              hint: "Chụp rõ mặt đồng hồ, thấy được con số giờ máy; ảnh lưu kèm phiếu làm bằng chứng khi đối chiếu lúc thu hồi.",
+              render: (p) => <MeterPhotoField {...p} />,
+            },
             { name: "fuel_level", label: "Mức nhiên liệu (%)", type: "number", placeholder: "0 – 100" },
             { name: "accessories", label: "Phụ kiện kèm theo", maxLength: 500, placeholder: "VD: Gầu 0,8 m³; bộ dụng cụ" },
-            { name: "receiver_name", label: "Người nhận máy", required: true, maxLength: 100 },
+            { name: "receiver_name", label: "Người nhận máy", required: true, maxLength: 50 },
             { name: "receiver_phone", label: "SĐT người nhận", maxLength: 11 },
             { name: "condition_note", label: "Tình trạng máy khi giao", type: "textarea", full: true, placeholder: "VD: Hoạt động bình thường, xích còn 85%" },
           ]}
@@ -259,6 +299,7 @@ function HandoverPage({ user }) {
             handover_at: nowLocalISO(),
             operating_hours: String(handing.operating_hours),
             fuel_level: "",
+            meter_photo: "",
             receiver_name: handing.representative || "",
             receiver_phone: handing.customer_phone || "",
           }}

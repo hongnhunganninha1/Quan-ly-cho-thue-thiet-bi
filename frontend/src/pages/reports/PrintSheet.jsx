@@ -1,45 +1,11 @@
 import { todayISO } from "../../utils/format";
-
-// Thông tin doanh nghiệp in ở góc trái đầu báo cáo
-const COMPANY = {
-  name: "CÔNG TY CỔ PHẦN COMACPRO",
-  address: "Tầng 5 tòa nhà ACCI, số 210 Lê Trọng Tấn, Thanh Xuân, Hà Nội",
-  taxCode: "0110449655",
-};
-
-// Chức danh ký cuối báo cáo: báo cáo tài chính (doanh thu, công nợ) và báo cáo vận hành (thiết bị, hợp đồng)
-const SIGNERS = {
-  finance: ["Người lập biểu", "Kế toán trưởng", "Giám đốc"],
-  operation: ["Người lập biểu", "Trưởng phòng Kinh doanh - Vận hành", "Giám đốc"],
-};
-
-const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
+import { COMPANY, SIGNERS, rowNumbers } from "../../utils/reportInfo";
 
 // Dòng ký hiệu cột theo mẫu biểu Việt Nam: cột chữ ghi A, B, C…; cột số ghi 1, 2, 3…
 function columnMarks(columns) {
   let letter = 1; // "A" dành cho cột STT
   let number = 0;
   return ["A", ...columns.map((c) => (c.align === "right" ? String(++number) : String.fromCharCode(65 + letter++)))];
-}
-
-// Số thứ tự: dòng nhóm đánh I, II…; dòng thường đánh 1, 2… (đếm lại trong từng nhóm); dòng tổng để trống
-function rowNumbers(rows) {
-  const result = [];
-  let group = 0;
-  let index = 0;
-  for (const r of rows) {
-    if (r.kind === "group") {
-      result.push(ROMAN[group] || "");
-      group += 1;
-      index = 0;
-    } else if (r.kind === "total") {
-      result.push("");
-    } else {
-      index += 1;
-      result.push(index);
-    }
-  }
-  return result;
 }
 
 // Một bảng trong báo cáo in. rows: [{ cells: [...], kind?: "group" | "total" }]

@@ -13,7 +13,8 @@ const NOT_FOUND = {
   engine: "Không tìm thấy số máy trong ảnh.",
 };
 
-function ModelInput({ id, value, setValue, invalid, disabled, kind = "model", placeholder = "VD: PC200-8", maxLength = 100 }) {
+// onFile(file | null): báo cho form biết ảnh tem đang chọn, để khi lưu máy thì lưu ảnh vào Giấy tờ (loại "Ảnh tem máy")
+function ModelInput({ id, value, setValue, invalid, disabled, kind = "model", placeholder = "VD: PC200-8", maxLength = 50, onFile }) {
   const fileRef = useRef(null);
   const [preview, setPreview] = useState(null); // ảnh vừa chọn
   const [progress, setProgress] = useState(null); // null: không đọc; 0..100: đang đọc
@@ -30,6 +31,7 @@ function ModelInput({ id, value, setValue, invalid, disabled, kind = "model", pl
     }
     if (preview) URL.revokeObjectURL(preview);
     setPreview(URL.createObjectURL(file));
+    onFile?.(file);
     setError("");
     setCandidates(null);
     setProgress(0);
@@ -46,6 +48,15 @@ function ModelInput({ id, value, setValue, invalid, disabled, kind = "model", pl
   };
 
   const reading = progress !== null;
+
+  // Bỏ ảnh vừa chọn và các gợi ý (giữ nguyên mã đã điền trong ô)
+  const clearImage = () => {
+    if (preview) URL.revokeObjectURL(preview);
+    setPreview(null);
+    setCandidates(null);
+    setError("");
+    onFile?.(null);
+  };
 
   return (
     <div className="model-input">
@@ -99,6 +110,11 @@ function ModelInput({ id, value, setValue, invalid, disabled, kind = "model", pl
               </>
             )}
           </div>
+          {!reading && (
+            <button type="button" className="text-action danger model-ocr-clear" onClick={clearImage} title="Xoá ảnh và các gợi ý">
+              Xoá ảnh
+            </button>
+          )}
         </div>
       )}
     </div>

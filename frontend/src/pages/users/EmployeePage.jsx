@@ -18,12 +18,12 @@ function EmployeePage() {
   return (
     <CatalogPage
       afterSave={notifyUserChanged} // sửa họ tên của chính mình thì tên ở góc trên cập nhật theo
-      title="Quản lý nhân viên"
-      description="Hồ sơ nhân viên công ty. Nhân viên cần đăng nhập hệ thống thì cấp tài khoản ở mục Quản lý tài khoản."
+      title="Nhân viên"
+      description="Hồ sơ nhân viên công ty. Nhân viên cần đăng nhập hệ thống thì cấp tài khoản ở mục Người dùng → Tài khoản."
       endpoint="/employees"
       itemName="nhân viên"
       searchPlaceholder="Tìm theo mã, họ tên, số điện thoại, email…"
-      searchText={(e) => [e.code, e.full_name, e.phone, e.email, e.position, e.username].join(" ")}
+      searchText={(e) => [e.code, e.full_name, e.phone, e.email, e.position].join(" ")}
       filters={[
         { key: "department_id", label: "Phòng ban", options: departments },
         { key: "status", label: "Trạng thái", options: STATUSES },
@@ -42,16 +42,16 @@ function EmployeePage() {
         },
         { key: "department_name", label: "Phòng ban" },
         { key: "phone", label: "Điện thoại" },
-        { key: "email", label: "Email" },
+        { key: "email", label: "Email công ty" },
         {
           key: "hire_date",
           label: "Ngày vào làm",
           render: (e) => formatDate(e.hire_date) || <span className="text-muted">—</span>,
         },
         {
-          key: "username",
+          key: "user_id",
           label: "Tài khoản",
-          render: (e) => (e.username ? e.username : <span className="text-muted">Chưa có</span>),
+          render: (e) => (e.user_id ? "Đã cấp" : <span className="text-muted">Chưa có</span>),
         },
         {
           key: "status",
@@ -60,12 +60,12 @@ function EmployeePage() {
             e.status === "WORKING" ? (
               <span className="badge badge-success">Đang làm việc</span>
             ) : (
-              <span className="badge badge-neutral">Đã nghỉ việc</span>
+              <span className="badge badge-warning">Đã nghỉ việc</span>
             ),
         },
       ]}
       fields={[
-        { name: "full_name", label: "Họ tên", required: true, maxLength: 100 },
+        { name: "full_name", label: "Họ tên", required: true, maxLength: 50 },
         {
           name: "department_id",
           label: "Phòng ban",
@@ -78,8 +78,15 @@ function EmployeePage() {
         { name: "date_of_birth", label: "Ngày sinh", type: "date", max: todayStr(), maxLabel: "hôm nay" },
         { name: "id_number", label: "Số CCCD", maxLength: 12, placeholder: "12 chữ số" },
         { name: "phone", label: "Số điện thoại", maxLength: 11 },
-        { name: "email", label: "Email", type: "email", maxLength: 100 },
-        { name: "position", label: "Chức vụ", maxLength: 100, placeholder: "VD: Nhân viên kinh doanh" },
+        {
+          name: "email",
+          label: "Email công ty",
+          type: "email",
+          maxLength: 100,
+          placeholder: "VD: ten@comacpro.com",
+          hint: "Email công ty cấp, cũng là tên đăng nhập khi được cấp tài khoản.",
+        },
+        { name: "position", label: "Chức vụ", maxLength: 50, placeholder: "VD: Nhân viên kinh doanh" },
         { name: "address", label: "Địa chỉ", full: true, maxLength: 255 },
         { name: "hire_date", label: "Ngày vào làm", type: "date" },
         {
@@ -92,7 +99,7 @@ function EmployeePage() {
       ]}
       emptyForm={{ status: "WORKING" }}
       rowLabel={(e) => `${e.code} – ${e.full_name}`}
-      deleteBlocked={(e) => (e.username ? "Nhân viên đã có tài khoản, không thể xoá" : null)}
+      deleteBlocked={(e) => (e.user_id ? "Nhân viên đã có tài khoản, không thể xoá" : null)}
       createSubtitle="Mã nhân viên được tạo tự động (NV0001, NV0002…)."
       editSubtitle={(e) => `Mã nhân viên: ${e.code}`}
     />

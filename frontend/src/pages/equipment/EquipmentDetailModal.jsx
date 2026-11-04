@@ -11,6 +11,8 @@ import ImageCropper from "../../components/common/ImageCropper";
 import { formatDate, formatDateTime, formatMoney, formatNumber } from "../../utils/format";
 import { CONTRACT_STATUS, DOC_TYPES, EQUIPMENT_STATUS, ITEM_CONDITION, toOptions } from "../../utils/labels";
 import { todayStr } from "../../utils/dateLimits";
+import { MeterPhotoThumb } from "../../components/common/MeterPhoto";
+import DocFileField from "../../components/common/DocFileField";
 
 const TABS = [
   { key: "info", label: "Thông tin" },
@@ -74,7 +76,7 @@ function EquipmentDetailModal({
   const changed = (message) => {
     setToast({ type: "success", message });
     reload();
-    onChanged();
+    onChanged?.();
   };
 
   const uploadDoc = async (values) => {
@@ -241,26 +243,57 @@ function EquipmentDetailModal({
                       <small className="form-hint">JPG, PNG, WEBP · căn chỉnh khung 4:3 trước khi lưu</small>
                     </div>
                     <div>
+                      {/* Giá thuê đặt nổi bật ở đầu */}
+                      <div className="price-cards">
+                        {eq.daily_rate ? (
+                          <>
+                            <div className="price-card">
+                              <span className="price-card-label">Giá thuê theo ngày</span>
+                              <strong>{formatMoney(eq.daily_rate)}</strong>
+                            </div>
+                            <div className="price-card">
+                              <span className="price-card-label">Giá thuê theo giờ</span>
+                              <strong>{formatMoney(eq.hourly_rate)}</strong>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="price-card empty">
+                            <span className="price-card-label">Giá thuê</span>
+                            <strong>Chưa có giá</strong>
+                            <small>Quản lý đặt giá ở mục Thiết bị → Giá thuê.</small>
+                          </div>
+                        )}
+                      </div>
+
+                      <h4 className="info-section-title">Thông tin chung</h4>
                       <dl className="info-grid">
-                        <Info label="Danh mục" value={`${eq.group_name} › ${eq.category_name}`} />
+                        <Info
+                          label="Danh mục"
+                          value={
+                            <>
+                              <span className="cell-main">{eq.category_name}</span>
+                              <span className="cell-sub">{eq.group_name}</span>
+                            </>
+                          }
+                        />
                         <Info label="Hãng / Model" value={`${eq.brand_name}${eq.model ? ` – ${eq.model}` : ""}`} />
-                        <Info label="Số serial (số khung)" value={eq.serial_number} />
-                        <Info label="Số máy" value={eq.engine_number} />
                         <Info label="Năm sản xuất" value={eq.manufacture_year} />
                         <Info label="Tình trạng" value={ITEM_CONDITION[eq.item_condition]?.label} />
                         <Info label="Xuất xứ" value={eq.origin_country} />
-                        <Info label="Thông số kỹ thuật" value={eq.specifications} full />
+                        <Info label="Số giờ máy" value={eq.operating_hours !== null ? `${formatNumber(eq.operating_hours)} giờ` : null} />
+                        <Info label="Số serial (số khung)" value={eq.serial_number} />
+                        <Info label="Số máy (số động cơ)" value={eq.engine_number} />
+                      </dl>
+
+                      <h4 className="info-section-title">Mua sắm</h4>
+                      <dl className="info-grid">
                         <Info label="Ngày mua" value={formatDate(eq.purchase_date)} />
                         <Info label="Giá mua" value={formatMoney(eq.purchase_price)} />
-                        <Info label="Số giờ máy" value={formatNumber(eq.operating_hours)} />
-                        <Info
-                          label="Giá thuê"
-                          value={
-                            eq.daily_rate
-                              ? `${formatMoney(eq.daily_rate)}/ngày · ${formatMoney(eq.hourly_rate)}/giờ`
-                              : "Chưa có giá"
-                          }
-                        />
+                      </dl>
+
+                      <h4 className="info-section-title">Thông số & ghi chú</h4>
+                      <dl className="info-grid">
+                        <Info label="Thông số kỹ thuật" value={eq.specifications} full />
                         <Info label="Ghi chú" value={eq.note} full />
                       </dl>
                       {/* Chỉ Quản lý được chuyển máy sang Ngừng hoạt động / Thanh lý */}
@@ -373,7 +406,7 @@ function EquipmentDetailModal({
                         ) : (
                           eq.rentals.map((r) => (
                             <tr key={r.contract_id}>
-                              <td>
+                              <td className="nowrap">
                                 <strong>{r.contract_no}</strong>
                               </td>
                               <td>{r.customer_name}</td>
@@ -385,6 +418,12 @@ function EquipmentDetailModal({
                                   <>
                                     <span className="cell-main">{r.handover_no}</span>
                                     <span className="cell-sub">{formatDateTime(r.handover_at)}</span>
+                                    <span className="meter-cell">
+                                      {formatNumber(r.handover_hours)} giờ máy
+                                      {r.handover_meter_photo && (
+                                        <MeterPhotoThumb url={r.handover_meter_photo} title={`Đồng hồ giờ máy lúc bàn giao – ${r.handover_no}`} />
+                                      )}
+                                    </span>
                                   </>
                                 ) : (
                                   <span className="text-muted">Chưa giao</span>
@@ -398,6 +437,12 @@ function EquipmentDetailModal({
                                       {r.is_damaged ? <span className="badge badge-danger">Hư hỏng</span> : null}
                                     </span>
                                     <span className="cell-sub">{formatDateTime(r.returned_at)}</span>
+                                    <span className="meter-cell">
+                                      {formatNumber(r.return_hours)} giờ máy
+                                      {r.return_meter_photo && (
+                                        <MeterPhotoThumb url={r.return_meter_photo} title={`Đồng hồ giờ máy lúc thu hồi – ${r.return_no}`} />
+                                      )}
+                                    </span>
                                     {r.is_damaged && r.damage_description ? (
                                       <span className="cell-sub">{r.damage_description}</span>
                                     ) : null}
@@ -406,7 +451,13 @@ function EquipmentDetailModal({
                                   <span className="text-muted">{r.handover_no ? "Chưa thu hồi" : "—"}</span>
                                 )}
                               </td>
-                              <td className="align-right">{formatMoney(r.amount)}</td>
+                              <td className="align-right">
+                                <span className="cell-main">{formatMoney(r.amount)}</span>
+                                {/* Giá đã áp dụng cho lần thuê này (đơn giá chép vào chi tiết hợp đồng) */}
+                                <span className="cell-sub">
+                                  {formatMoney(r.unit_price)}/{r.pricing_type === "DAY" ? "ngày" : "giờ"} × {formatNumber(r.planned_duration)}
+                                </span>
+                              </td>
                               <td>
                                 <StatusBadge map={CONTRACT_STATUS} value={r.contract_status} />
                               </td>
@@ -436,17 +487,17 @@ function EquipmentDetailModal({
               options: toOptions(DOC_TYPES),
               emptyOption: "— Chọn loại —",
             },
-            { name: "doc_number", label: "Số giấy tờ", maxLength: 100 },
+            { name: "doc_number", label: "Số giấy tờ", maxLength: 50 },
             { name: "issued_date", label: "Ngày cấp", type: "date", max: todayStr(), maxLabel: "hôm nay" },
             { name: "expiry_date", label: "Ngày hết hạn", type: "date", hint: "Để trống nếu không có thời hạn." },
             {
               name: "file",
               label: "File",
-              type: "file",
+              type: "custom",
               required: true,
               full: true,
-              accept: ".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx",
-              hint: "PDF, ảnh hoặc Word, tối đa 10 MB.",
+              hint: "Ảnh chụp, PDF hoặc Word, tối đa 10 MB. Ảnh và PDF được xem trước ngay khi chọn.",
+              render: (p) => <DocFileField {...p} accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" />,
             },
           ]}
           initialValues={{}}
@@ -475,7 +526,7 @@ function EquipmentDetailModal({
               label: "Lý do",
               type: "textarea",
               full: true,
-              maxLength: 200,
+              maxLength: 255,
               hint: "Bắt buộc khi chuyển sang Ngừng hoạt động hoặc Đã thanh lý. Lý do được hiện trong hồ sơ máy.",
               placeholder: "VD: Hỏng bơm thuỷ lực, đưa đi sửa",
             },

@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import "../catalog/CatalogPage.css";
+import PagerFooter, { PageSizeSelect } from "../../components/common/Pager";
+import usePager from "../../hooks/usePager";
 import "./Equipment.css";
 import { api } from "../../api/client";
 import useApiData from "../../hooks/useApiData";
@@ -7,7 +9,8 @@ import StatusBadge from "../../components/common/StatusBadge";
 import EquipmentThumb from "../../components/common/EquipmentThumb";
 import { daysInclusive, formatDate, formatMoney, normalizeText, todayISO } from "../../utils/format";
 import { CONTRACT_STATUS, EQUIPMENT_STATUS } from "../../utils/labels";
-import { categoryFilterOptions, matchCategory, renderOptions } from "../../utils/options";
+import { categoryTreeOptions, matchCategory } from "../../utils/options";
+import TreeSelect from "../../components/common/TreeSelect";
 import { exportExcel } from "../../utils/exportExcel";
 import { dateError } from "../../utils/dateLimits";
 import DateInput from "../../components/common/DateInput";
@@ -16,7 +19,7 @@ const AVAILABILITY = {
   FREE: { label: "Trống cả khoảng", badge: "badge-success" },
   BUSY: { label: "Trùng lịch", badge: "badge-danger" },
   NO_PRICE: { label: "Chưa có giá", badge: "badge-warning" },
-  INACTIVE: { label: "Ngừng hoạt động", badge: "badge-neutral" },
+  INACTIVE: { label: "Ngừng hoạt động", badge: "badge-danger" },
 };
 
 function addDays(iso, n) {
@@ -116,6 +119,8 @@ function AvailabilityPage({ onNavigate }) {
   }, [rows, category, warehouse, onlyFree, keyword]);
 
   const freeCount = filtered.filter((r) => r.availability === "FREE").length;
+  // Phân trang; đổi bộ lọc / tra cứu lại thì về trang 1
+  const pager = usePager(filtered, JSON.stringify([category, onlyFree, keyword, warehouse, rows?.length]));
 
   // Xuất danh sách đang hiển thị (đã lọc) ra Excel
   const exportFile = () => {
@@ -209,16 +214,20 @@ function AvailabilityPage({ onNavigate }) {
           </label>
           <label>
             Loại thiết bị
-            <select value={category} onChange={(e) => setCategory(e.target.value)}>
-              <option value="">Tất cả</option>
-              {renderOptions(categoryFilterOptions(categories))}
-            </select>
+            <TreeSelect
+              value={category}
+              onChange={setCategory}
+              options={categoryTreeOptions(categories)}
+              placeholder="Tất cả"
+              allLabel="Tất cả"
+              ariaLabel="Loại thiết bị"
+            />
           </label>
           <label>
             Bãi máy
             <select value={warehouse} onChange={(e) => setWarehouse(e.target.value)}>
               <option value="">Tất cả</option>
-              {warehouses.map((w) => (
+              {warehouses.filter((w) => w.status === "ACTIVE").map((w) => (
                 <option key={w.id} value={String(w.id)}>
                   {w.name}
                 </option>
@@ -259,6 +268,7 @@ function AvailabilityPage({ onNavigate }) {
               </span>
               <span className="badge badge-success">{freeCount} máy trống cả khoảng</span>
               <span className="badge badge-neutral">{filtered.length} máy trong danh sách</span>
+              <PageSizeSelect pager={pager} />
             </div>
             <div className="sched-legend">
               <span>
@@ -309,7 +319,7 @@ function AvailabilityPage({ onNavigate }) {
                   </td>
                 </tr>
               ) : (
-                filtered.map((r) => (
+                pager.pageRows.map((r) => (
                   <tr key={r.id}>
                     <td className="cell-wrap">
                       <div className="thumb-cell">
@@ -380,6 +390,7 @@ function AvailabilityPage({ onNavigate }) {
             </tbody>
           </table>
         </div>
+        {rows && <PagerFooter pager={pager} />}
       </section>
     </div>
   );

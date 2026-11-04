@@ -153,6 +153,45 @@
 
 /* ----- Hợp đồng chờ duyệt ----- */
 
+/* Thẻ chờ duyệt cao bằng thẻ "Tình trạng thiết bị" bên cạnh; nhiều hợp đồng thì cuộn bên trong */
+.card-pending {
+  display: flex;
+  flex-direction: column;
+}
+
+.pending-scroll {
+  max-height: 320px; /* màn hẹp (2 thẻ xếp chồng): tối đa khoảng 3,5 hợp đồng rồi cuộn */
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+@media (min-width: 1200px) {
+  /* 2 thẻ nằm cạnh nhau: thẻ chờ duyệt không góp vào chiều cao hàng (height: 0)
+     mà giãn bằng thẻ biểu đồ (min-height: 100%), phần danh sách lấy hết chỗ còn lại rồi cuộn */
+  .card-pending {
+    height: 0;
+    min-height: 100%;
+  }
+
+  .card-pending .pending-scroll {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+  }
+}
+
+.card-count {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--line);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
 .pending-list {
   list-style: none;
   display: flex;

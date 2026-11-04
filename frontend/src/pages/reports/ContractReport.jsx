@@ -77,7 +77,6 @@ function ContractReport({ user }) {
         ],
         notes: ["Ghi chú: Dòng Tổng cộng không tính hợp đồng nháp, bị từ chối và đã huỷ."],
       }}
-      canExport={Boolean(rows.length)}
       filters={
         <form
           className="filter-bar"

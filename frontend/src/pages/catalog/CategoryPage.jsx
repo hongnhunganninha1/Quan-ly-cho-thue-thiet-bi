@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import RowMenu from "../../components/common/RowMenu";
 import "./CatalogPage.css";
 import "./CategoryPage.css";
 import { api } from "../../api/client";
@@ -48,7 +49,8 @@ const CODE_HINT = "Chữ cái không dấu, chữ số, dấu gạch ngang (VD: 
 
 // Màn Quản lý loại thiết bị, phân 2 cấp: Nhóm thiết bị → Loại thiết bị.
 // Bên trái là danh sách nhóm, bên phải là các loại thuộc nhóm đang chọn (kèm số máy).
-function CategoryPage() {
+// onNavigate: chuyển sang màn khác (từ một loại thiết bị → thêm máy / xem các máy của loại đó)
+function CategoryPage({ onNavigate }) {
   const { data: rows, error, reload } = useApiData("/categories", []);
   const [selectedId, setSelectedId] = useState(null);
   const [form, setForm] = useState(null); // { level: "group" | "type", row }
@@ -60,6 +62,7 @@ function CategoryPage() {
   const selected = groups.find((g) => g.id === selectedId) || groups[0];
   const types = selected ? rows.filter((r) => r.parent_id === selected.id) : [];
   const totalEquipments = groups.reduce((s, g) => s + g.equipment_count, 0);
+  const typeCount = (g) => rows.filter((r) => r.parent_id === g.id).length;
 
   const done = (message) => {
     setToast({ type: "success", message });
@@ -76,7 +79,7 @@ function CategoryPage() {
       done(r.message);
       return null;
     } catch (err) {
-      return err.message;
+      return err; // kèm err.field để form tô đỏ ô bị trùng
     }
   };
 
@@ -89,7 +92,7 @@ function CategoryPage() {
             label: "Mã nhóm",
             required: true,
             uppercase: true,
-            maxLength: 20,
+            maxLength: 10,
             placeholder: "VD: DDD",
             hint: CODE_HINT,
           },
@@ -111,7 +114,7 @@ function CategoryPage() {
             label: "Mã loại",
             required: true,
             uppercase: true,
-            maxLength: 20,
+            maxLength: 10,
             placeholder: "VD: MXD-BX",
             hint: CODE_HINT,
           },
@@ -127,18 +130,15 @@ function CategoryPage() {
       }
     : { parent_id: selected ? String(selected.id) : "" };
 
+  // Chỉ chặn xoá khi đang có thiết bị. Nhóm chưa có máy nào thì xoá được (các loại con rỗng bị xoá theo).
   const deleteBlocked = (r) =>
-    r.parent_id === null && r.child_count > 0
-      ? "Nhóm đang có loại con"
-      : r.parent_id !== null && r.equipment_count > 0
-        ? "Loại đang có thiết bị"
-        : null;
+    r.equipment_count > 0 ? (r.parent_id === null ? "Nhóm đang có thiết bị" : "Loại đang có thiết bị") : null;
 
   return (
     <div className="catalog">
       <div className="page-heading">
         <div>
-          <h1>Quản lý loại thiết bị</h1>
+          <h1>Loại thiết bị</h1>
         </div>
         <button className="btn btn-accent btn-icon" onClick={() => setForm({ level: "group", row: null })}>
           <PlusIcon /> Thêm nhóm
@@ -152,7 +152,9 @@ function CategoryPage() {
         <aside className="catalog-card group-list">
           <header className="group-list-header">
             <strong>Nhóm thiết bị</strong>
-            <span className="count-pill">{totalEquipments}</span>
+            <span className="text-muted">
+              {groups.length} nhóm · {totalEquipments} máy
+            </span>
           </header>
           {groups.length === 0 && <p className="table-message">Chưa có nhóm nào.</p>}
           {groups.map((g) => (
@@ -164,8 +166,12 @@ function CategoryPage() {
               <span className="group-icon">
                 <FolderIcon />
               </span>
-              <span className="group-name">{g.name}</span>
-              <span className="count-pill">{g.equipment_count}</span>
+              <span className="group-name">
+                {g.name}
+                <small>
+                  {typeCount(g)} loại · {g.equipment_count} máy
+                </small>
+              </span>
               <ChevronIcon />
             </button>
           ))}
@@ -179,29 +185,31 @@ function CategoryPage() {
             <>
               <header className="type-panel-header">
                 <div>
-                  <h2>
-                    {selected.name} <span className="count-pill">{selected.equipment_count}</span>
-                  </h2>
+                  <h2>{selected.name}</h2>
                   <p>
-                    Mã nhóm <strong>{selected.code}</strong>
+                    Mã nhóm <strong>{selected.code}</strong> · {types.length} loại · {selected.equipment_count} máy
                     {selected.description ? ` · ${selected.description}` : ""}
                   </p>
                 </div>
                 <div className="type-panel-actions">
-                  <button className="icon-button" title="Sửa nhóm" onClick={() => setForm({ level: "group", row: selected })}>
-                    <EditIcon />
-                  </button>
-                  <button
-                    className="icon-button icon-danger"
-                    title={deleteBlocked(selected) || "Xoá nhóm"}
-                    disabled={Boolean(deleteBlocked(selected))}
-                    onClick={() => setDeleting(selected)}
-                  >
-                    <TrashIcon />
-                  </button>
-                  <button className="btn btn-accent btn-icon" onClick={() => setForm({ level: "type", row: null })}>
+                  <button className="btn btn-secondary btn-icon btn-sm-plus" onClick={() => setForm({ level: "type", row: null })}>
                     <PlusIcon /> Thêm loại
                   </button>
+                  {/* Nút ba chấm của nhóm: Sửa / Xoá (nhóm còn máy thì không hiện Xoá) */}
+                  <RowMenu
+                    label="Thao tác với nhóm"
+                    items={[
+                      { key: "edit", label: "Sửa nhóm", icon: <EditIcon />, onClick: () => setForm({ level: "group", row: selected }) },
+                      {
+                        key: "delete",
+                        label: "Xoá nhóm",
+                        icon: <TrashIcon />,
+                        danger: true,
+                        disabled: Boolean(deleteBlocked(selected)),
+                        onClick: () => setDeleting(selected),
+                      },
+                    ]}
+                  />
                 </div>
               </header>
 
@@ -210,30 +218,40 @@ function CategoryPage() {
               ) : (
                 <ul className="type-list">
                   {types.map((t) => (
-                    <li key={t.id} className="type-item">
-                      <div className="type-info">
-                        <span className="type-name">{t.name}</span>
-                        <span className="cell-sub">
-                          <span className="badge badge-info">{t.code}</span>
-                          {t.description ? ` ${t.description}` : ""}
-                        </span>
-                      </div>
-                      <span className="count-pill" title="Số thiết bị">
-                        {t.equipment_count}
+                    <li
+                      key={t.id}
+                      className="type-item clickable"
+                      title="Bấm để xem các thiết bị thuộc loại này"
+                      onClick={() => onNavigate?.(`equipment-profile:type-${t.id}`)}
+                    >
+                      <span className="type-name">{t.name}</span>
+                      <span className="type-code">
+                        <span className="badge badge-info">{t.code}</span>
                       </span>
-                      <div className="row-actions">
-                        <button className="icon-button" title="Sửa loại" onClick={() => setForm({ level: "type", row: t })}>
-                          <EditIcon />
-                        </button>
-                        <button
-                          className="icon-button icon-danger"
-                          title={deleteBlocked(t) || "Xoá loại"}
-                          disabled={Boolean(deleteBlocked(t))}
-                          onClick={() => setDeleting(t)}
-                        >
-                          <TrashIcon />
-                        </button>
-                      </div>
+                      <span className="type-desc">{t.description || ""}</span>
+                      <span className={`type-count ${t.equipment_count ? "" : "is-zero"}`}>{t.equipment_count} máy</span>
+                      {/* Nút ba chấm: Thêm máy / Sửa / Xoá – bấm vào đây không mở danh sách máy */}
+                      <span onClick={(e) => e.stopPropagation()}>
+                        <RowMenu
+                          items={[
+                            {
+                              key: "add-equipment",
+                              label: "Thêm thiết bị loại này",
+                              icon: <PlusIcon />,
+                              onClick: () => onNavigate?.(`equipment-profile:add-${t.id}`),
+                            },
+                            { key: "edit", label: "Chỉnh sửa", icon: <EditIcon />, onClick: () => setForm({ level: "type", row: t }) },
+                            {
+                              key: "delete",
+                              label: "Xoá",
+                              icon: <TrashIcon />,
+                              danger: true,
+                              disabled: Boolean(deleteBlocked(t)),
+                              onClick: () => setDeleting(t),
+                            },
+                          ]}
+                        />
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -262,7 +280,11 @@ function CategoryPage() {
           title={`Xoá ${deleting.parent_id === null ? "nhóm" : "loại"} thiết bị`}
           message={
             <>
-              Bạn có chắc muốn xoá <strong>{deleting.name}</strong>? Thao tác này không thể hoàn tác.
+              Bạn có chắc muốn xoá <strong>{deleting.name}</strong>?
+              {deleting.parent_id === null && deleting.child_count > 0 && (
+                <> {deleting.child_count} loại thiết bị trong nhóm (chưa có máy nào) cũng sẽ bị xoá.</>
+              )}{" "}
+              Thao tác này không thể hoàn tác.
             </>
           }
           onConfirm={async () => {
