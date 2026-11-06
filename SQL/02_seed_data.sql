@@ -1,7 +1,6 @@
 -- =====================================================================
---  File 02: Initial data (run after 01_schema.sql)
+--  File 02: Initial data
 --  Only master data: roles, departments, employees & accounts, warehouses, equipment categories, brands.
---  Company founded 14/08/2023: employee hire dates start from then.
 --  Default passwords:  Manager -> Admin@123     Staff -> Nhanvien@123
 -- =====================================================================
 USE kltn_1;
