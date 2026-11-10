@@ -172,3 +172,9 @@
   text-align: center;
   color: var(--text-2);
 }
+
+/* Thông báo đã qua (việc đã xử lý xong), giữ lại 7 ngày để xem lại */
+.notification-done {
+  font-style: normal;
+  color: var(--text-2);
+}

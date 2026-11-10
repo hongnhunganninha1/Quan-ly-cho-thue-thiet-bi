@@ -84,7 +84,10 @@ function NotificationBell({ notifications, onRead, onReadAll, onNavigate }) {
                     <span className="notification-text">
                       <strong>{item.title}</strong>
                       {item.message && <span>{item.message}</span>}
-                      <small>{item.time}</small>
+                      <small>
+                        {item.time}
+                        {item.done && <em className="notification-done"> · Đã xong</em>}
+                      </small>
                     </span>
                   </button>
                 </li>

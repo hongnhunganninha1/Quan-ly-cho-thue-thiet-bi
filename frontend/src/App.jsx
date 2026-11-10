@@ -7,6 +7,7 @@ import { timeAgo } from "./utils/format";
 import { USER_CHANGED_EVENT } from "./utils/userEvents";
 
 const NOTIFICATION_REFRESH_MS = 60 * 1000; // 1 phút tải lại thông báo một lần
+const HISTORY_MS = 7 * 24 * 60 * 60 * 1000; // giữ thông báo đã qua 7 ngày
 
 // Điểm vào của ứng dụng: chưa đăng nhập thì hiện màn đăng nhập,
 // đăng nhập rồi thì hiện khung chính.
@@ -17,6 +18,7 @@ function App() {
   const [notifications, setNotifications] = useState([]);
 
   const logout = useCallback((notice = "") => {
+    api.post("/auth/logout").catch(() => {}); // xoá cookie xem file; lỗi mạng thì bỏ qua
     clearToken();
     setUser(null);
     setNotifications([]);
@@ -34,7 +36,10 @@ function App() {
     api
       .get("/auth/me")
       .then((data) => setUser(data.user))
-      .catch(() => clearToken())
+      .catch((err) => {
+        // Chỉ xoá token khi máy chủ báo token không còn hợp lệ; backend đang tắt thì giữ lại để tải lại trang là vào được
+        if (err.status === 401) clearToken();
+      })
       .finally(() => setChecking(false));
   }, []);
 
@@ -74,6 +79,9 @@ function App() {
     [readKey]
   );
 
+  // Lịch sử: thông báo đã hiện được giữ lại 7 ngày, kể cả khi việc đã xử lý xong (máy chủ không trả về nữa)
+  // → vẫn xem lại được, gắn nhãn "Đã xong". Cảnh báo theo ngày (quá hạn, cần bàn giao…) chỉ giữ bản mới nhất mỗi hợp đồng.
+  const historyKey = user ? `kltn_notification_history_${user.id}` : null;
   const loadNotifications = useCallback(() => {
     api
       .get("/notifications")
@@ -81,10 +89,36 @@ function App() {
         const readIds = loadReadIds();
         // Chỉ giữ dấu "đã đọc" của các thông báo còn hiện, để dữ liệu lưu không phình to dần
         saveReadIds(new Set(list.map((n) => n.id).filter((id) => readIds.has(id))));
-        setNotifications(list.map((n) => ({ ...n, read: readIds.has(n.id) })));
+        const live = list.map((n) => ({ ...n, read: readIds.has(n.id) }));
+
+        let history = {};
+        try {
+          history = JSON.parse(localStorage.getItem(historyKey) || "{}");
+        } catch {
+          history = {};
+        }
+        const now = Date.now();
+        const group = (id) => id.split("-").slice(0, 2).join("-"); // loại + mã hợp đồng (bỏ phần ngày)
+        live.forEach((n) => {
+          history[n.id] = { id: n.id, title: n.title, message: n.message, createdAt: n.createdAt, target: n.target, seenAt: history[n.id]?.seenAt || now };
+        });
+        const liveIds = new Set(live.map((n) => n.id));
+        const liveGroups = new Set(live.map((n) => group(n.id)));
+        const past = Object.values(history)
+          .filter((h) => !liveIds.has(h.id) && now - h.seenAt < HISTORY_MS)
+          .sort((a, b) => b.seenAt - a.seenAt)
+          .filter((h, i, arr) => !liveGroups.has(group(h.id)) && arr.findIndex((x) => group(x.id) === group(h.id)) === i);
+        const keep = {};
+        [...live, ...past].forEach((n) => (keep[n.id] = history[n.id]));
+        try {
+          localStorage.setItem(historyKey, JSON.stringify(keep));
+        } catch {
+          // trình duyệt chặn lưu trữ thì chỉ hiện thông báo hiện tại
+        }
+        setNotifications([...live, ...past.map((h) => ({ ...h, read: true, done: true }))]);
       })
       .catch(() => {}); // lỗi tải thông báo thì giữ danh sách cũ, không làm phiền người dùng
-  }, [loadReadIds, saveReadIds]);
+  }, [loadReadIds, saveReadIds, historyKey]);
 
   useEffect(() => {
     if (!user) return;
@@ -100,7 +134,7 @@ function App() {
     setNotifications((prev) => prev.map((n) => (ids.includes(n.id) ? { ...n, read: true } : n)));
   };
   const readNotification = (id) => markRead([id]);
-  const readAllNotifications = () => markRead(notifications.map((n) => n.id));
+  const readAllNotifications = () => markRead(notifications.filter((n) => !n.done).map((n) => n.id));
 
   // ----- Đăng nhập / đổi mật khẩu -----
 
