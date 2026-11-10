@@ -88,16 +88,21 @@ const connect = () => pool.query("SELECT 1").then(() => ensureSchema()); // CSDL
 
 if (process.env.VERCEL) {
   // Trên Vercel: không tự mở cổng, mỗi yêu cầu được Vercel chuyển vào hàm này
+  // CSDL trên mạng đã nạp đủ cấu trúc từ bản xuất, nên lệnh tự bổ sung cột có lỗi (TiDB khác MySQL đôi chút) thì chỉ ghi log, không chặn web
+  const connectDeploy = () =>
+    pool.query("SELECT 1").then(() => ensureSchema().catch((err) => console.error("Bỏ qua lỗi khi rà soát CSDL:", err.message)));
   let ready = null;
   module.exports = async (req, res) => {
     try {
-      await (ready ||= connect().catch((err) => {
+      await (ready ||= connectDeploy().catch((err) => {
         ready = null; // lần sau thử kết nối lại
         throw err;
       }));
     } catch (err) {
       console.error("Không kết nối được MySQL:", err.message);
-      return res.status(500).json({ message: "Không kết nối được cơ sở dữ liệu." });
+      res.statusCode = 500;
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      return res.end(JSON.stringify({ message: "Không kết nối được cơ sở dữ liệu." }));
     }
     return app(req, res);
   };
