@@ -1,10 +1,12 @@
 // Điểm khởi động backend: đọc cấu hình .env, khai báo các API rồi chạy server.
 require("dotenv").config({ quiet: true });
+// Vercel không cho đặt biến TZ, nên dùng APP_TZ để đặt múi giờ Việt Nam cho Node
+if (process.env.APP_TZ) process.env.TZ = process.env.APP_TZ;
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const pool = require("./config/db");
-const { requireLogin, requireRole } = require("./middleware/auth");
+const { requireLogin, requirePasswordChanged, requireFileLogin, requireRole } = require("./middleware/auth");
 const errorHandler = require("./middleware/errorHandler");
 const ensureSchema = require("./utils/ensureSchema");
 
@@ -18,18 +20,26 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// File giấy tờ thiết bị đã tải lên (backend/uploads/...)
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// File giấy tờ thiết bị đã tải lên (backend/uploads/...): phải đăng nhập mới xem được
+app.use("/uploads", requireFileLogin, express.static(path.join(__dirname, "uploads")));
 
-app.get("/", (req, res) => {
-  res.json({ message: "Backend KLTN đang hoạt động!" });
-});
+// Chỉ dùng khi deploy (SERVE_FRONTEND=true): backend phục vụ luôn giao diện đã build (frontend/dist),
+// để web và API chạy chung một địa chỉ. Chạy ở máy cá nhân thì giao diện vẫn chạy riêng bằng "npm run dev".
+const SERVE_FRONTEND = process.env.SERVE_FRONTEND === "true";
+const FRONTEND_DIST = path.join(__dirname, "..", "frontend", "dist");
+if (SERVE_FRONTEND) {
+  app.use(express.static(FRONTEND_DIST));
+} else {
+  app.get("/", (req, res) => {
+    res.json({ message: "Backend KLTN đang hoạt động!" });
+  });
+}
 
 // Không cần đăng nhập
 app.use("/api/auth", require("./routes/auth.routes"));
 
-// Từ đây trở xuống bắt buộc đăng nhập
-app.use("/api", requireLogin);
+// Từ đây trở xuống bắt buộc đăng nhập và đã đổi mật khẩu tạm
+app.use("/api", requireLogin, requirePasswordChanged);
 app.use("/api/profile", require("./routes/profile.routes")); // hồ sơ cá nhân: ai cũng dùng được
 app.use("/api/notifications", require("./routes/notification.routes"));
 app.use("/api/dashboard", require("./routes/dashboard.routes"));
@@ -64,22 +74,44 @@ app.use("/api", (req, res) => {
   res.status(404).json({ message: "Không tìm thấy API." });
 });
 
+// Khi deploy: mọi đường dẫn khác (không phải /api, /uploads) trả về trang giao diện
+if (SERVE_FRONTEND) {
+  app.use((req, res, next) => (req.method === "GET" ? res.sendFile(path.join(FRONTEND_DIST, "index.html")) : next()));
+}
+
 app.use(errorHandler);
 
 const PORT = Number(process.env.PORT) || 5000;
 
 // Thử kết nối MySQL trước, báo lỗi rõ ràng nếu sai thông tin trong .env
-pool
-  .query("SELECT 1")
-  .then(() => ensureSchema()) // CSDL tạo từ bản SQL cũ thì tự thêm các cột còn thiếu
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Đã kết nối MySQL (database: ${process.env.DB_NAME || "heavy_rental"})`);
-      console.log(`Server đang chạy tại http://localhost:${PORT}`);
+const connect = () => pool.query("SELECT 1").then(() => ensureSchema()); // CSDL tạo từ bản SQL cũ thì tự thêm các cột còn thiếu
+
+if (process.env.VERCEL) {
+  // Trên Vercel: không tự mở cổng, mỗi yêu cầu được Vercel chuyển vào hàm này
+  let ready = null;
+  module.exports = async (req, res) => {
+    try {
+      await (ready ||= connect().catch((err) => {
+        ready = null; // lần sau thử kết nối lại
+        throw err;
+      }));
+    } catch (err) {
+      console.error("Không kết nối được MySQL:", err.message);
+      return res.status(500).json({ message: "Không kết nối được cơ sở dữ liệu." });
+    }
+    return app(req, res);
+  };
+} else {
+  connect()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`Đã kết nối MySQL (database: ${process.env.DB_NAME || "kltn_1"})`);
+        console.log(`Server đang chạy tại http://localhost:${PORT}`);
+      });
+    })
+    .catch((err) => {
+      console.error("Không kết nối được MySQL hoặc lỗi CSDL:", err.message);
+      console.error("Kiểm tra MySQL đã bật chưa và thông tin DB_... trong file .env.");
+      process.exit(1);
     });
-  })
-  .catch((err) => {
-    console.error("Không kết nối được MySQL hoặc lỗi CSDL:", err.message);
-    console.error("Kiểm tra MySQL đã bật chưa và thông tin DB_... trong file .env.");
-    process.exit(1);
-  });
+}

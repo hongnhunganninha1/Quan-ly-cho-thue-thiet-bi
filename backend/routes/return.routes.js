@@ -4,7 +4,7 @@ const pool = require("../config/db");
 const HttpError = require("../utils/httpError");
 const nextCode = require("../utils/nextCode");
 const withTransaction = require("../utils/transaction");
-const { setEquipmentStatus } = require("../utils/equipmentStatus");
+const { setEquipmentStatus, hasWaitingContract } = require("../utils/equipmentStatus");
 const { assertWarehouseHasRoom } = require("../utils/warehouseCapacity");
 const { returnFees } = require("../utils/calc");
 const { meterUpload, meterPhotoUrl, removeUploaded } = require("../utils/meterPhoto");
@@ -102,7 +102,7 @@ async function createReturn(req, res) {
     const { data, d, fees } = await prepare(conn, req.body, true);
     required(data, { to_warehouse_id: "bãi nhận máy" });
     if (!req.file) throw new HttpError(400, "Vui lòng chụp ảnh đồng hồ giờ máy lúc thu hồi.");
-    data.meter_photo_url = meterPhotoUrl(req.file);
+    data.meter_photo_url = await meterPhotoUrl(req.file);
     if (data.is_damaged && !data.damage_description) throw new HttpError(400, "Vui lòng mô tả hư hỏng.");
     const [[wh]] = await conn.query("SELECT status FROM warehouses WHERE id = ?", [data.to_warehouse_id]);
     if (!wh || wh.status !== "ACTIVE") throw new HttpError(400, "Bãi nhận máy không hợp lệ hoặc đã ngừng hoạt động.");
@@ -117,14 +117,7 @@ async function createReturn(req, res) {
     // hoặc Đã giữ chỗ nếu đã có hợp đồng khác (chờ duyệt / đã duyệt) đang chờ máy này.
     let newStatus = "AVAILABLE";
     if (data.is_damaged) newStatus = "INACTIVE";
-    else {
-      const [[{ waiting }]] = await conn.query(
-        `SELECT COUNT(*) AS waiting FROM contract_details cd JOIN rental_contracts rc ON rc.id = cd.contract_id
-          WHERE cd.equipment_id = ? AND cd.status = 'PENDING' AND rc.status IN ('PENDING_APPROVAL','APPROVED','ACTIVE')`,
-        [d.equipment_id]
-      );
-      if (waiting > 0) newStatus = "RESERVED";
-    }
+    else if (await hasWaitingContract(conn, d.equipment_id)) newStatus = "RESERVED";
     await setEquipmentStatus(conn, d.equipment_id, newStatus, {
       userId: req.user.id, contractId: d.contract_id,
       note: data.is_damaged

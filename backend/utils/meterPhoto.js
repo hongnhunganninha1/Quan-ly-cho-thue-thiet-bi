@@ -5,8 +5,9 @@ const fs = require("fs");
 const multer = require("multer");
 const HttpError = require("./httpError");
 
-const METER_DIR = path.join(__dirname, "..", "uploads", "meter");
-fs.mkdirSync(METER_DIR, { recursive: true });
+const { uploadDir, publishUpload } = require("./storage");
+
+const METER_DIR = uploadDir("meter");
 const IMAGE_EXT = [".jpg", ".jpeg", ".png", ".webp"];
 
 // prefix: "bg" (bàn giao) hoặc "th" (thu hồi)
@@ -28,7 +29,7 @@ function meterUpload(prefix) {
 }
 
 // Đường dẫn lưu trong CSDL của file vừa tải lên
-const meterPhotoUrl = (file) => (file ? `/uploads/meter/${file.filename}` : null);
+const meterPhotoUrl = (file) => publishUpload(file, "meter");
 
 // Xoá file vừa tải lên khi lập phiếu thất bại (để không còn ảnh rác)
 function removeUploaded(file) {

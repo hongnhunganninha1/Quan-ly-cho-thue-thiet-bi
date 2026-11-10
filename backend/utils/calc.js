@@ -65,8 +65,8 @@ function settlementTotals(contract, returns) {
 // Trạng thái thanh toán. amount_due < 0: công ty phải hoàn lại cọc thừa cho khách.
 function paymentStatus(amountDue, paidAmount) {
   if (amountDue === 0) return "PAID";
-  if (amountDue < 0) return paidAmount >= -amountDue ? "REFUNDED" : "UNPAID";
   if (paidAmount <= 0) return "UNPAID";
+  if (amountDue < 0) return paidAmount >= -amountDue ? "REFUNDED" : "PARTIAL";
   return paidAmount >= amountDue ? "PAID" : "PARTIAL";
 }
 

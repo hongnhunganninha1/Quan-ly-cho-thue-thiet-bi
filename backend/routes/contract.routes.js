@@ -4,6 +4,7 @@
 //   DRAFT (nháp) → PENDING_APPROVAL (chờ duyệt) → APPROVED (đã duyệt) hoặc REJECTED (từ chối)
 //   → khách đặt cọc → bàn giao máy: ACTIVE (đang thuê) → thu hồi hết máy: COMPLETED → quyết toán: SETTLED.
 //   Hợp đồng đã duyệt mà quá 3 ngày khách chưa đặt cọc thì Quản lý huỷ: CANCELLED.
+//   Huỷ hợp đồng đã nhận cọc (chưa giao máy) thì hoàn toàn bộ tiền cọc cho khách.
 const express = require("express");
 const pool = require("../config/db");
 const HttpError = require("../utils/httpError");
@@ -13,7 +14,7 @@ const { setEquipmentStatus, releaseReservation } = require("../utils/equipmentSt
 const { findConflicts } = require("../utils/availability");
 const { contractTotals, daysInclusive, MIN_HOURLY_HOURS, MAX_HOURLY_DAYS } = require("../utils/calc");
 const { requireRole } = require("../middleware/auth");
-const { pick, required, maxLength, nonNegativeNumber, parseId, toDateTime, validDate } = require("../utils/validate");
+const { pick, required, maxLength, nonNegativeNumber, parseId, toDateTime, validDate, todayLocal } = require("../utils/validate");
 
 const router = express.Router();
 
@@ -33,6 +34,7 @@ async function buildContract(conn, body, contractId = 0) {
   if (!["HOUR", "DAY"].includes(data.pricing_type)) throw new HttpError(400, "Hình thức tính giá không hợp lệ.");
   validDate(data, { start_date: "Ngày bắt đầu", end_date: "Ngày kết thúc" });
   if (data.end_date < data.start_date) throw new HttpError(400, "Ngày kết thúc phải bằng hoặc sau ngày bắt đầu.");
+  if (data.start_date < todayLocal()) throw new HttpError(400, "Ngày bắt đầu không được ở trong quá khứ.");
   const days = daysInclusive(data.start_date, data.end_date);
   if (days > MAX_DAYS) throw new HttpError(400, "Thời gian thuê tối đa 1 năm cho một hợp đồng.");
 
@@ -289,6 +291,7 @@ router.post("/:id/submit", async (req, res) => {
     const c = await lockContract(conn, id);
     if (!["DRAFT", "REJECTED"].includes(c.status)) throw new HttpError(409, "Hợp đồng không ở trạng thái nháp.");
     if (!canModify(c, req.user)) throw new HttpError(403, "Bạn chỉ gửi duyệt được hợp đồng do mình lập.");
+    if (c.start_date < todayLocal()) throw new HttpError(400, "Ngày bắt đầu đã qua, vui lòng sửa lại hợp đồng trước khi gửi duyệt.");
     const [items] = await conn.query(
       "SELECT cd.equipment_id, e.code AS _code FROM contract_details cd JOIN equipments e ON e.id = cd.equipment_id WHERE cd.contract_id = ?",
       [id]
@@ -406,7 +409,10 @@ router.post("/:id/cancel", requireRole("ADMIN"), async (req, res) => {
       throw new HttpError(409, "Chỉ huỷ được hợp đồng đang chờ duyệt hoặc đã duyệt mà chưa bàn giao.");
     }
     await conn.query(
-      "UPDATE rental_contracts SET status = 'CANCELLED', cancel_reason = ?, cancelled_by = ?, cancelled_at = NOW() WHERE id = ?",
+      `UPDATE rental_contracts
+          SET status = 'CANCELLED', cancel_reason = ?, cancelled_by = ?, cancelled_at = NOW(),
+              deposit_refunded_at = IF(deposit_paid_at IS NULL, NULL, NOW())
+        WHERE id = ?`,
       [reason, req.user.id, id]
     );
     // Trả lại chỗ cho các máy đã giữ
@@ -416,7 +422,46 @@ router.post("/:id/cancel", requireRole("ADMIN"), async (req, res) => {
     }
     return c;
   });
-  res.json({ message: `Đã huỷ hợp đồng ${c.contract_no}.` });
+  res.json({
+    message: `Đã huỷ hợp đồng ${c.contract_no}.` +
+      (c.deposit_paid_at ? ` Đã ghi nhận hoàn đủ tiền cọc ${Number(c.deposit_amount).toLocaleString("vi-VN")} ₫ cho khách.` : ""),
+  });
+});
+
+// POST /api/contracts/:id/items/:detailId/remove { reason } – Quản lý bỏ một máy chưa bàn giao khỏi hợp đồng đang thuê
+// (VD máy hỏng trước khi giao, khách không lấy nữa), tính lại tiền hợp đồng để hợp đồng vẫn hoàn tất và quyết toán được.
+router.post("/:id/items/:detailId/remove", requireRole("ADMIN"), async (req, res) => {
+  const id = parseId(req.params.id);
+  const detailId = parseId(req.params.detailId);
+  const reason = String(req.body?.reason || "").trim();
+  if (!reason) throw new HttpError(400, "Vui lòng nhập lý do bỏ máy.");
+  if (reason.length > 255) throw new HttpError(400, "Lý do không được quá 255 ký tự.");
+  const result = await withTransaction(async (conn) => {
+    const c = await lockContract(conn, id);
+    if (c.status !== "ACTIVE") throw new HttpError(409, "Chỉ bỏ máy của hợp đồng đang thuê. Hợp đồng chưa bàn giao máy nào thì dùng chức năng huỷ.");
+    const [[item]] = await conn.query(
+      `SELECT cd.equipment_id, cd.status, e.code FROM contract_details cd JOIN equipments e ON e.id = cd.equipment_id
+        WHERE cd.id = ? AND cd.contract_id = ? FOR UPDATE`,
+      [detailId, id]
+    );
+    if (!item) throw new HttpError(404, "Không tìm thấy máy trong hợp đồng.");
+    if (item.status !== "PENDING") throw new HttpError(409, `Máy ${item.code} đã được bàn giao, không bỏ được.`);
+
+    await conn.query("DELETE FROM contract_details WHERE id = ?", [detailId]);
+    const [items] = await conn.query("SELECT amount, status FROM contract_details WHERE contract_id = ?", [id]);
+    const completed = items.every((i) => i.status === "RETURNED"); // các máy còn lại đã thu hồi hết thì chờ quyết toán
+    await conn.query("UPDATE rental_contracts SET ?, note = CONCAT_WS(CHAR(10), note, ?) WHERE id = ?", [
+      { ...contractTotals(items, c), status: completed ? "COMPLETED" : "ACTIVE" },
+      `Bỏ máy ${item.code}: ${reason}`,
+      id,
+    ]);
+    await releaseReservation(conn, item.equipment_id, { contractId: id });
+    return { code: item.code, contract_no: c.contract_no, completed };
+  });
+  res.json({
+    message: `Đã bỏ máy ${result.code} khỏi hợp đồng ${result.contract_no} và tính lại giá trị hợp đồng.` +
+      (result.completed ? " Hợp đồng đã thu hồi đủ máy, chuyển sang chờ quyết toán." : ""),
+  });
 });
 
 module.exports = router;

@@ -2,17 +2,16 @@
 // và đổi ảnh đại diện. Các thông tin khác (họ tên, CCCD, phòng ban, chức vụ…) do Quản lý cập nhật.
 const express = require("express");
 const path = require("path");
-const fs = require("fs");
 const multer = require("multer");
 const pool = require("../config/db");
 const HttpError = require("../utils/httpError");
+const { uploadDir, publishUpload, removeStored } = require("../utils/storage");
 const { pick, maxLength, matches } = require("../utils/validate");
 
 const router = express.Router();
 
 // ----- Ảnh đại diện: thư mục backend/uploads/avatars -----
-const AVATAR_DIR = path.join(__dirname, "..", "uploads", "avatars");
-fs.mkdirSync(AVATAR_DIR, { recursive: true });
+const AVATAR_DIR = uploadDir("avatars");
 const AVATAR_EXT = [".jpg", ".jpeg", ".png", ".webp"];
 const uploadAvatar = multer({
   storage: multer.diskStorage({
@@ -29,7 +28,7 @@ const uploadAvatar = multer({
 });
 
 function removeAvatar(url) {
-  if (url?.startsWith("/uploads/avatars/")) fs.unlink(path.join(AVATAR_DIR, path.basename(url)), () => {});
+  removeStored(url);
 }
 
 // GET /api/profile – hồ sơ của người đang đăng nhập
@@ -62,7 +61,7 @@ router.put("/", async (req, res) => {
 router.post("/avatar", uploadAvatar.single("avatar"), async (req, res) => {
   if (!req.file) throw new HttpError(400, "Vui lòng chọn ảnh.");
   const [[old]] = await pool.query("SELECT avatar_url FROM employees WHERE id = ?", [req.user.employee_id]);
-  const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+  const avatarUrl = await publishUpload(req.file, "avatars");
   await pool.query("UPDATE employees SET avatar_url = ? WHERE id = ?", [avatarUrl, req.user.employee_id]);
   removeAvatar(old?.avatar_url); // xoá ảnh cũ
   res.json({ avatar_url: avatarUrl, message: "Đã đổi ảnh đại diện." });

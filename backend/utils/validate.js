@@ -68,10 +68,16 @@ function parseId(value) {
   return id;
 }
 
+// Hôm nay dạng "YYYY-MM-DD" theo giờ máy chủ (toISOString là giờ UTC, trước 7h sáng ở Việt Nam sẽ ra ngày hôm qua)
+function todayLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 // Kiểm tra các ô ngày dạng "YYYY-MM-DD": năm đúng 4 chữ số (1900–2099) và là ngày có thật (không có 31/02).
 // labels: { date_of_birth: "Ngày sinh", ... }; ô bỏ trống thì bỏ qua (ô bắt buộc kiểm tra bằng required).
 function validDate(data, labels, { notFuture = [] } = {}) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLocal();
   for (const [field, label] of Object.entries(labels)) {
     const v = data[field];
     if (v === undefined || v === null || v === "") continue;
@@ -100,4 +106,4 @@ function toDateTime(value, label) {
   return full;
 }
 
-module.exports = { squeeze, pick, required, maxLength, matches, nonNegativeNumber, parseId, toDateTime, validDate };
+module.exports = { squeeze, pick, required, maxLength, matches, nonNegativeNumber, parseId, toDateTime, validDate, todayLocal };

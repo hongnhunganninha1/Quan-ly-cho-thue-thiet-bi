@@ -13,14 +13,14 @@ const UNIQUE_LABELS = {
 };
 
 function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-vars
+  // Body gửi lên không phải JSON hợp lệ (phải xét trước err.status vì lỗi này cũng có status 400)
+  if (err.type === "entity.parse.failed") {
+    return res.status(400).json({ message: "Dữ liệu gửi lên không hợp lệ." });
+  }
+
   // Lỗi do chính mình ném ra (HttpError)
   if (err.status) {
     return res.status(err.status).json({ message: err.message, field: err.field || undefined });
-  }
-
-  // Body gửi lên không phải JSON hợp lệ
-  if (err.type === "entity.parse.failed") {
-    return res.status(400).json({ message: "Dữ liệu gửi lên không hợp lệ." });
   }
 
   switch (err.code) {

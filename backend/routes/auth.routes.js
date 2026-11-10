@@ -4,7 +4,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const pool = require("../config/db");
 const HttpError = require("../utils/httpError");
-const { requireLogin } = require("../middleware/auth");
+const { requireLogin, setFileCookie, clearFileCookie } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -74,11 +74,19 @@ router.post("/login", async (req, res) => {
     expiresIn: req.body?.remember ? "7d" : "8h",
   });
 
+  setFileCookie(res, token);
   res.json({ token, user: toUserDto(user) });
+});
+
+// POST /api/auth/logout – xoá cookie xem file (token đăng nhập do trình duyệt tự xoá)
+router.post("/logout", (req, res) => {
+  clearFileCookie(res);
+  res.json({ message: "Đã đăng xuất." });
 });
 
 // GET /api/auth/me – lấy lại thông tin người đang đăng nhập (khi tải lại trang)
 router.get("/me", requireLogin, (req, res) => {
+  setFileCookie(res, req.token); // phiên "Ghi nhớ đăng nhập" mở lại trình duyệt vẫn xem được file
   res.json({ user: toUserDto(req.user) });
 });
 
@@ -100,7 +108,7 @@ router.post("/change-password", requireLogin, async (req, res) => {
 
   const hash = await bcrypt.hash(newPassword, 10);
   await pool.query(
-    "UPDATE users SET password_hash = ?, must_change_password = FALSE WHERE id = ?",
+    "UPDATE users SET password_hash = ?, must_change_password = FALSE, password_changed_at = NOW() WHERE id = ?",
     [hash, req.user.id]
   );
   res.json({ message: "Đổi mật khẩu thành công." });

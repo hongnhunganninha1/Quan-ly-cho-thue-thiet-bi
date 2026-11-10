@@ -8,19 +8,19 @@ const HttpError = require("../utils/httpError");
 const assertNoDuplicate = require("../utils/duplicate");
 const nextCode = require("../utils/nextCode");
 const withTransaction = require("../utils/transaction");
-const { setEquipmentStatus } = require("../utils/equipmentStatus");
+const { setEquipmentStatus, hasWaitingContract } = require("../utils/equipmentStatus");
 const { assertWarehouseHasRoom } = require("../utils/warehouseCapacity");
 const { findConflicts } = require("../utils/availability");
 const { HOURS_PER_DAY } = require("../utils/calc");
 const { buildEquipmentName } = require("../utils/equipmentName");
 const { requireRole } = require("../middleware/auth");
+const { uploadDir, publishUpload, removeStored } = require("../utils/storage");
 const { pick, required, maxLength, nonNegativeNumber, parseId, validDate } = require("../utils/validate");
 
 const router = express.Router();
 
 // ----- Tải file giấy tờ lên thư mục backend/uploads/docs -----
-const UPLOAD_DIR = path.join(__dirname, "..", "uploads", "docs");
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+const UPLOAD_DIR = uploadDir("docs");
 const ALLOWED_EXT = [".pdf", ".jpg", ".jpeg", ".png", ".webp", ".doc", ".docx"];
 const upload = multer({
   storage: multer.diskStorage({
@@ -38,8 +38,7 @@ const upload = multer({
 });
 
 // ----- Ảnh đại diện thiết bị: thư mục backend/uploads/equipment -----
-const IMAGE_DIR = path.join(__dirname, "..", "uploads", "equipment");
-fs.mkdirSync(IMAGE_DIR, { recursive: true });
+const IMAGE_DIR = uploadDir("equipment");
 const IMAGE_EXT = [".jpg", ".jpeg", ".png", ".webp"];
 const uploadImage = multer({
   storage: multer.diskStorage({
@@ -55,6 +54,12 @@ const uploadImage = multer({
     cb(ok ? null : new HttpError(400, "Ảnh thiết bị chỉ nhận file JPG, PNG hoặc WEBP."), ok);
   },
 });
+
+// Kiểm tra id trên đường dẫn TRƯỚC khi nhận file: id được ghép vào tên file nên không được chứa ký tự lạ (VD ../)
+const checkEquipmentId = (req, res, next) => {
+  parseId(req.params.id);
+  next();
+};
 
 const STATUS_LABELS = {
   AVAILABLE: "Sẵn sàng", RESERVED: "Đã giữ chỗ", RENTED: "Đang cho thuê", INACTIVE: "Ngừng hoạt động", LIQUIDATED: "Đã thanh lý",
@@ -319,7 +324,7 @@ router.patch("/:id/status", requireRole("ADMIN"), async (req, res) => {
   if (note && note.length > 255) throw new HttpError(400, "Lý do không được quá 255 ký tự.");
   if (!["AVAILABLE", "INACTIVE", "LIQUIDATED"].includes(status)) throw new HttpError(400, "Trạng thái không hợp lệ.");
 
-  await withTransaction(async (conn) => {
+  const finalStatus = await withTransaction(async (conn) => {
     const [[eq]] = await conn.query("SELECT status FROM equipments WHERE id = ? FOR UPDATE", [id]);
     if (!eq) throw new HttpError(404, "Không tìm thấy thiết bị.");
     if (["RESERVED", "RENTED"].includes(eq.status)) {
@@ -329,9 +334,12 @@ router.patch("/:id/status", requireRole("ADMIN"), async (req, res) => {
     if (eq.status === status) throw new HttpError(400, "Máy đang ở trạng thái này rồi.");
     const extra = status === "LIQUIDATED" ? { warehouse_id: null } : {};
     if (status !== "AVAILABLE" && !note) throw new HttpError(400, "Vui lòng nhập lý do ngừng hoạt động / thanh lý.");
-    await setEquipmentStatus(conn, id, status, { note, extra });
+    // Máy sửa xong mà đang có hợp đồng chờ thì giữ chỗ cho hợp đồng đó, giống lúc thu hồi máy
+    const next = status === "AVAILABLE" && (await hasWaitingContract(conn, id)) ? "RESERVED" : status;
+    await setEquipmentStatus(conn, id, next, { note, extra });
+    return next;
   });
-  res.json({ message: `Đã chuyển máy sang "${STATUS_LABELS[status]}".` });
+  res.json({ message: `Đã chuyển máy sang "${STATUS_LABELS[finalStatus]}".` });
 });
 
 // PUT /api/equipments/:id/price – Quản lý đặt giá thuê (giá giờ và giá ngày đi cùng nhau)
@@ -438,14 +446,13 @@ router.delete("/:id", async (req, res) => {
 // Xoá file đã tải lên (giấy tờ hoặc ảnh) khi bản ghi bị xoá / thay ảnh mới
 function removeFile(fileUrl) {
   if (path.basename(fileUrl || "").startsWith("mau-")) return; // ảnh mẫu dùng chung cho nhiều máy thì giữ lại
-  if (fileUrl?.startsWith("/uploads/docs/")) fs.unlink(path.join(UPLOAD_DIR, path.basename(fileUrl)), () => {});
-  if (fileUrl?.startsWith("/uploads/equipment/")) fs.unlink(path.join(IMAGE_DIR, path.basename(fileUrl)), () => {});
+  removeStored(fileUrl);
 }
 
 // ----- Ảnh đại diện -----
 
 // POST /api/equipments/:id/image (multipart/form-data: image) – tải lên / thay ảnh
-router.post("/:id/image", uploadImage.single("image"), async (req, res) => {
+router.post("/:id/image", checkEquipmentId, uploadImage.single("image"), async (req, res) => {
   const id = parseId(req.params.id);
   if (!req.file) throw new HttpError(400, "Vui lòng chọn ảnh.");
   const [[eq]] = await pool.query("SELECT image_url FROM equipments WHERE id = ?", [id]);
@@ -453,7 +460,7 @@ router.post("/:id/image", uploadImage.single("image"), async (req, res) => {
     fs.unlink(req.file.path, () => {});
     throw new HttpError(404, "Không tìm thấy thiết bị.");
   }
-  const imageUrl = `/uploads/equipment/${req.file.filename}`;
+  const imageUrl = await publishUpload(req.file, "equipment");
   await pool.query("UPDATE equipments SET image_url = ? WHERE id = ?", [imageUrl, id]);
   removeFile(eq.image_url); // xoá ảnh cũ
   res.json({ image_url: imageUrl, message: "Đã cập nhật ảnh thiết bị." });
@@ -470,7 +477,7 @@ router.delete("/:id/image", async (req, res) => {
 });
 
 // POST /api/equipments/:id/documents (multipart/form-data: file, doc_type, doc_number, issued_date, expiry_date)
-router.post("/:id/documents", upload.single("file"), async (req, res) => {
+router.post("/:id/documents", checkEquipmentId, upload.single("file"), async (req, res) => {
   const id = parseId(req.params.id);
   if (!req.file) throw new HttpError(400, "Vui lòng chọn file giấy tờ.");
   const data = pick(req.body, ["doc_type", "doc_number", "issued_date", "expiry_date"]);
@@ -483,8 +490,9 @@ router.post("/:id/documents", upload.single("file"), async (req, res) => {
     }
     const [[eq]] = await pool.query("SELECT id FROM equipments WHERE id = ?", [id]);
     if (!eq) throw new HttpError(404, "Không tìm thấy thiết bị.");
+    const fileUrl = await publishUpload(req.file, "docs");
     await pool.query("INSERT INTO equipment_documents SET ?", [
-      { ...data, equipment_id: id, file_url: `/uploads/docs/${req.file.filename}`, uploaded_by: req.user.id },
+      { ...data, equipment_id: id, file_url: fileUrl, uploaded_by: req.user.id },
     ]);
   } catch (err) {
     fs.unlink(req.file.path, () => {}); // lỗi thì xoá file vừa tải lên

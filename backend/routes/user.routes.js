@@ -116,7 +116,7 @@ router.post("/:id/reset-password", async (req, res) => {
   const password = tempPassword();
   const hash = await bcrypt.hash(password, 10);
   const [r] = await pool.query(
-    "UPDATE users SET password_hash = ?, must_change_password = TRUE, failed_login_count = 0, locked_until = NULL WHERE id = ?",
+    "UPDATE users SET password_hash = ?, must_change_password = TRUE, password_changed_at = NOW(), failed_login_count = 0, locked_until = NULL WHERE id = ?",
     [hash, id]
   );
   if (r.affectedRows === 0) throw new HttpError(404, "Không tìm thấy tài khoản.");

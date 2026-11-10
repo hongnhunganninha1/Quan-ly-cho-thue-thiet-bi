@@ -13,6 +13,8 @@ const COLUMNS = [
   ["equipments", "status_note", "VARCHAR(200) NULL COMMENT 'Lý do ngừng hoạt động / thanh lý' AFTER status"],
   ["handovers", "meter_photo_url", "VARCHAR(255) NULL COMMENT 'Ảnh chụp đồng hồ giờ máy lúc giao' AFTER operating_hours"],
   ["equipment_returns", "meter_photo_url", "VARCHAR(255) NULL COMMENT 'Ảnh chụp đồng hồ giờ máy lúc nhận' AFTER operating_hours"],
+  ["users", "password_changed_at", "DATETIME NULL COMMENT 'Token cấp trước thời điểm này không còn hiệu lực' AFTER must_change_password"],
+  ["rental_contracts", "deposit_refunded_at", "DATETIME NULL COMMENT 'Thời điểm hoàn toàn bộ tiền cọc khi huỷ hợp đồng' AFTER deposit_confirmed_by"],
 ];
 
 // Độ dài cột đã rà soát lại cho sát thực tế (VD: họ tên người 50 ký tự, số điện thoại 11, mã số thuế 14)
@@ -296,6 +298,12 @@ async function ensureSchema() {
     await pool.query(REPORT_VIEW_SQL);
     console.log("Đã cập nhật view v_report_equipment_status (gom theo nhóm thiết bị).");
   }
+
+  // Quyết toán đã hoàn cọc một phần trước đây bị lưu là "Chưa thanh toán" → sửa thành "Thanh toán một phần"
+  await pool.query(
+    `UPDATE settlements SET payment_status = 'PARTIAL'
+      WHERE amount_due < 0 AND paid_amount > 0 AND paid_amount < -amount_due AND payment_status = 'UNPAID'`
+  );
 
   // Bỏ bảng lịch sử trạng thái thiết bị (và trigger ghi bảng đó) nếu CSDL còn từ bản cũ
   await pool.query("DROP TRIGGER IF EXISTS trg_equipment_status_log");

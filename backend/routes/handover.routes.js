@@ -70,7 +70,7 @@ async function createHandover(req, res) {
   maxLength(data, { accessories: ["Phụ kiện kèm theo", 500], receiver_name: ["Người nhận", 50] });
   matches(data.receiver_phone, "phone", "Số điện thoại người nhận phải gồm 10–11 chữ số và bắt đầu bằng 0.");
   if (!req.file) throw new HttpError(400, "Vui lòng chụp ảnh đồng hồ giờ máy lúc bàn giao.");
-  data.meter_photo_url = meterPhotoUrl(req.file);
+  data.meter_photo_url = await meterPhotoUrl(req.file);
 
   const result = await withTransaction(async (conn) => {
     const [[d]] = await conn.query(
@@ -88,6 +88,10 @@ async function createHandover(req, res) {
     if (!d.deposit_paid_at) throw new HttpError(409, "Khách chưa đặt cọc, chưa được bàn giao máy.");
     if (d.equipment_status === "RENTED") throw new HttpError(409, `Máy ${d.code} chưa được thu hồi từ hợp đồng trước.`);
     if (!["AVAILABLE", "RESERVED"].includes(d.equipment_status)) throw new HttpError(409, `Máy ${d.code} đang ngừng hoạt động.`);
+    // Không giao máy trước ngày thuê: máy có thể còn được đặt cho một hợp đồng khác trong khoảng trước đó
+    if (data.handover_at.slice(0, 10) < d.start_date) {
+      throw new HttpError(409, `Chưa đến ngày bắt đầu thuê của hợp đồng ${d.contract_no} (${d.start_date.split("-").reverse().join("/")}).`);
+    }
     if (data.operating_hours < d.current_hours) {
       throw new HttpError(400, `Số giờ máy không được nhỏ hơn số đang ghi nhận (${d.current_hours}).`);
     }
