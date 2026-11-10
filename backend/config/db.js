@@ -22,4 +22,10 @@ if (process.env.DB_TIME_ZONE) {
   pool.pool.on("connection", (conn) => conn.query("SET time_zone = ?", [process.env.DB_TIME_ZONE]));
 }
 
+// Chỉ dùng khi deploy (TiDB): TiDB kiểm tra GROUP BY chặt hơn MySQL (báo lỗi "not in GROUP BY clause" với
+// các câu MySQL vẫn chạy được), nên tắt riêng chế độ ONLY_FULL_GROUP_BY cho kết nối trên Vercel.
+if (process.env.VERCEL) {
+  pool.pool.on("connection", (conn) => conn.query("SET SESSION sql_mode = REPLACE(@@sql_mode, 'ONLY_FULL_GROUP_BY', '')"));
+}
+
 module.exports = pool;
