@@ -88,9 +88,9 @@ const connect = () => pool.query("SELECT 1").then(() => ensureSchema()); // CSDL
 
 if (process.env.VERCEL) {
   // Trên Vercel: không tự mở cổng, mỗi yêu cầu được Vercel chuyển vào hàm này
-  // CSDL trên mạng đã nạp đủ cấu trúc từ bản xuất, nên lệnh tự bổ sung cột có lỗi (TiDB khác MySQL đôi chút) thì chỉ ghi log, không chặn web
-  const connectDeploy = () =>
-    pool.query("SELECT 1").then(() => ensureSchema().catch((err) => console.error("Bỏ qua lỗi khi rà soát CSDL:", err.message)));
+  // CSDL trên mạng đã nạp đủ cấu trúc từ bản xuất (không cần tự bổ sung cột như ở máy cá nhân),
+  // bỏ bước rà soát để mỗi lần Vercel khởi động hàm được nhanh
+  const connectDeploy = () => pool.query("SELECT 1");
   let ready = null;
   module.exports = async (req, res) => {
     try {
