@@ -306,7 +306,7 @@ async function ensureSchema() {
   );
 
   // Bỏ bảng lịch sử trạng thái thiết bị (và trigger ghi bảng đó) nếu CSDL còn từ bản cũ
-  await pool.query("DROP TRIGGER IF EXISTS trg_equipment_status_log");
+  await pool.query("DROP TRIGGER IF EXISTS trg_equipment_status_log").catch(() => {}); // TiDB (bản deploy) không hỗ trợ trigger
   await pool.query("DROP TABLE IF EXISTS equipment_status_logs");
 }
 
