@@ -8,7 +8,8 @@ const fs = require("fs");
 
 const LOCAL_ROOT = path.join(__dirname, "..", "uploads");
 const UPLOAD_ROOT = process.env.VERCEL ? path.join(os.tmpdir(), "uploads") : LOCAL_ROOT;
-const useBlob = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+// Kho Blob mới của Vercel nối vào project bằng OIDC (biến BLOB_STORE_ID), kho cũ dùng BLOB_READ_WRITE_TOKEN
+const useBlob = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 
 // Thư mục multer ghi file vừa tải lên
 function uploadDir(sub) {
@@ -20,7 +21,11 @@ function uploadDir(sub) {
 // Trả về đường dẫn lưu vào CSDL cho file multer vừa nhận
 async function publishUpload(file, sub) {
   if (!file) return null;
-  if (!useBlob()) return `/uploads/${sub}/${file.filename}`;
+  if (!useBlob()) {
+    // Trên Vercel ổ đĩa chỉ là bộ nhớ tạm: chưa nối kho Blob thì báo lỗi, không lưu đường dẫn ảnh sẽ bị mất
+    if (process.env.VERCEL) throw new Error("Chưa nối kho lưu ảnh (Vercel Blob) vào project.");
+    return `/uploads/${sub}/${file.filename}`;
+  }
   const { put } = require("@vercel/blob");
   const blob = await put(`${sub}/${file.filename}`, fs.readFileSync(file.path), {
     access: "public",
