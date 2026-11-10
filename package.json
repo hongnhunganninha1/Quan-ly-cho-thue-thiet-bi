@@ -1,0 +1,15 @@
+{
+  "name": "kltn-deploy",
+  "private": true,
+  "description": "Chỉ dùng khi deploy lên Vercel (backend chạy dạng hàm trong thư mục api). Chạy ở máy cá nhân vẫn dùng backend/ và frontend/ như cũ.",
+  "dependencies": {
+    "@vercel/blob": "^2.0.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.4.0",
+    "mysql2": "^3.24.6"
+  }
+}

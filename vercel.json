@@ -1,0 +1,15 @@
+{
+  "framework": null,
+  "installCommand": "npm install && npm install --prefix frontend",
+  "buildCommand": "npm run build --prefix frontend",
+  "outputDirectory": "frontend/dist",
+  "regions": ["sin1"],
+  "functions": {
+    "api/index.js": { "includeFiles": "backend/**", "maxDuration": 30 }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.js" },
+    { "source": "/uploads/(.*)", "destination": "/api/index.js" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
