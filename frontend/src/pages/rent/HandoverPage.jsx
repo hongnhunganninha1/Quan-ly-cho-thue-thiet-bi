@@ -17,7 +17,7 @@ import PrintPreview from "../../components/common/PrintPreview";
 import { ticketDoc } from "../../utils/printDocs";
 import { EyeIcon } from "../../components/common/Icons";
 import { MeterPhotoField } from "../../components/common/MeterPhoto";
-import { formatDate, formatNumber, normalizeText, nowLocalISO } from "../../utils/format";
+import { formatDate, formatNumber, normalizeText, nowLocalISO, todayISO } from "../../utils/format";
 import { EQUIPMENT_STATUS } from "../../utils/labels";
 
 // Màn Quản lý bàn giao: giao từng máy của hợp đồng (đã duyệt, đã đặt cọc) cho khách tại công trình
@@ -58,6 +58,7 @@ function HandoverPage({ user }) {
   // Lý do chưa bàn giao được (nếu có)
   const blockReason = (d) => {
     if (!d.deposit_paid_at) return "Khách chưa đặt cọc";
+    if (d.start_date > todayISO()) return "Chưa đến ngày bắt đầu thuê";
     if (d.equipment_status === "RENTED") return "Máy chưa thu hồi từ hợp đồng trước";
     if (!["AVAILABLE", "RESERVED"].includes(d.equipment_status)) return "Máy đang ngừng hoạt động";
     return null;

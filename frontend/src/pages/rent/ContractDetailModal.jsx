@@ -78,6 +78,8 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
   const isAdmin = user.role === "ADMIN";
   const step = c ? flowIndex(c) : -1;
   const handedOver = c ? c.items.some((i) => i.status !== "PENDING") : false;
+  // dialog = "remove:<id chi tiết>": đang xác nhận bỏ một máy chưa bàn giao
+  const removingItem = c && dialog?.startsWith("remove:") ? c.items.find((i) => i.id === Number(dialog.slice(7))) : null;
 
   return createPortal(
     <>
@@ -126,6 +128,7 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
                   <div className="alert alert-danger">
                     <strong>Đã huỷ</strong> {c.cancelled_by_name ? `bởi ${c.cancelled_by_name}` : ""}
                     {c.cancelled_at ? ` lúc ${formatDateTime(c.cancelled_at)}` : ""}: {c.cancel_reason}
+                    {c.deposit_refunded_at && `. Đã hoàn đủ tiền cọc ${formatMoney(c.deposit_amount)} cho khách.`}
                   </div>
                 )}
                 {c.status === "APPROVED" && !c.deposit_paid_at && (
@@ -197,6 +200,12 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
                             <td>{formatDateTime(c.deposit_paid_at)}</td>
                           </tr>
                         )}
+                        {c.deposit_refunded_at && (
+                          <tr className="sub">
+                            <td>Đã hoàn cọc</td>
+                            <td>{formatDateTime(c.deposit_refunded_at)}</td>
+                          </tr>
+                        )}
                         {c.settlement && (
                           <>
                             <tr className="sub">
@@ -244,6 +253,13 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
                           </td>
                           <td>
                             <StatusBadge map={DETAIL_STATUS} value={i.status} />
+                            {isAdmin && c.status === "ACTIVE" && i.status === "PENDING" && (
+                              <span className="cell-sub">
+                                <button type="button" className="link-button" onClick={() => setDialog(`remove:${i.id}`)}>
+                                  Bỏ máy khỏi hợp đồng
+                                </button>
+                              </span>
+                            )}
                             {i.handover_no && (
                               <span className="cell-sub">
                                 {i.handover_no} · {formatDate(i.handover_at)} · {formatNumber(i.handover_hours)} giờ máy{" "}
@@ -384,10 +400,23 @@ function ContractDetailModal({ id, user, onClose, onChanged, onEdit }) {
       {dialog === "cancel" && (
         <ConfirmDialog
           title="Huỷ hợp đồng"
-          message={`Huỷ hợp đồng ${c.contract_no}? Các máy đang giữ chỗ sẽ được trả về Sẵn sàng.`}
+          message={
+            `Huỷ hợp đồng ${c.contract_no}? Các máy đang giữ chỗ sẽ được trả về Sẵn sàng.` +
+            (c.deposit_paid_at ? ` Khách đã đặt cọc: xác nhận huỷ đồng nghĩa ghi nhận đã hoàn đủ ${formatMoney(c.deposit_amount)} cho khách.` : "")
+          }
           confirmLabel="Huỷ hợp đồng"
           inputLabel="Lý do huỷ"
           onConfirm={act((reason) => api.post(`/contracts/${id}/cancel`, { reason }))}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {removingItem && (
+        <ConfirmDialog
+          title="Bỏ máy khỏi hợp đồng"
+          message={`Bỏ máy ${removingItem.code} khỏi hợp đồng ${c.contract_no}? Giá trị hợp đồng sẽ được tính lại, phần tiền cọc thừa (nếu có) xử lý khi quyết toán.`}
+          confirmLabel="Bỏ máy"
+          inputLabel="Lý do bỏ máy"
+          onConfirm={act((reason) => api.post(`/contracts/${id}/items/${removingItem.id}/remove`, { reason }))}
           onClose={() => setDialog(null)}
         />
       )}

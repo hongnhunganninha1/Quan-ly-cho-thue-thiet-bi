@@ -146,6 +146,7 @@ function ContractForm({ contract, onCancel, onSaved }) {
     const dateMsg = dateError(form.start_date, "Ngày bắt đầu") || dateError(form.end_date, "Ngày kết thúc");
     if (dateMsg) return setError(dateMsg);
     if (!datesValid) return setError("Ngày kết thúc phải bằng hoặc sau ngày bắt đầu.");
+    if (form.start_date < todayISO()) return setError("Ngày bắt đầu không được ở trong quá khứ.");
     if (form.pricing_type === "HOUR" && daysInclusive(form.start_date, form.end_date) > 2)
       return setError("Thuê theo giờ chỉ áp dụng cho thời gian ngắn (trong ngày hoặc tối đa 2 ngày). Thuê dài hơn hãy chọn tính theo ngày.");
     if (lines.length === 0) return setError("Vui lòng chọn ít nhất một thiết bị.");
@@ -235,6 +236,7 @@ function ContractForm({ contract, onCancel, onSaved }) {
                   <DateInput
                     id="cf-start"
                     value={form.start_date}
+                    min={todayISO()}
                     onChange={(v) => setForm((f) => ({ ...f, start_date: v }))}
                   />
                 </div>
