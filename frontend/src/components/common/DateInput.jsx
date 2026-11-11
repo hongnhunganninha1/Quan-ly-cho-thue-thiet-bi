@@ -35,6 +35,10 @@ function textToIso(text, withTime) {
   return withTime ? `${iso}T${hh}:${mi}` : iso;
 }
 
+// Năm cho phép (khớp utils/dateLimits.js)
+const YEAR_MIN = 1900;
+const YEAR_MAX = 2099;
+
 // Các phần của ô ngày: [vị trí bắt đầu, kết thúc, chữ số đầu lớn hơn số này thì tự đủ 2 số (VD ngày gõ 5 → 05)]
 const SEGMENTS = [
   [0, 2, 3], // ngày
@@ -53,14 +57,89 @@ const segmentAt = (pos, withTime) => {
 const RANGES = [
   [1, 31],
   [1, 12],
-  [1900, 2100],
+  [YEAR_MIN, YEAR_MAX],
   [0, 23],
   [0, 59],
 ];
 
+// ----- Chặn ngày / tháng / năm không tồn tại ngay khi gõ -----
+// Số ngày của tháng; chưa biết năm thì cho tháng 2 tối đa 29 ngày
+const daysIn = (month, year) => (year ? new Date(Date.UTC(year, month, 0)).getUTCDate() : [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]);
+// Năm đang gõ dở (VD "20") còn có thể thành năm trong khoảng 1900–2099 không
+const yearPrefixOk = (p) => {
+  const n = Number(p);
+  const k = 10 ** (4 - p.length);
+  return n * k <= YEAR_MAX && (n + 1) * k - 1 >= YEAR_MIN;
+};
+
+// Lọc các số vừa gõ theo thứ tự ngày → tháng → năm → giờ → phút: số làm ngày / tháng / giờ / phút vượt giới hạn
+// thì bỏ qua (gõ ngày 32, tháng 13, 31/04… không được); ngày gõ 4–9 tự thành 04–09, tháng gõ 2–9 thành 02–09.
+// Gõ đủ năm mà ngày không có trong tháng đó (29/02 năm không nhuận) thì lùi về ngày cuối tháng.
+function cleanDigits(digits, withTime) {
+  let out = "";
+  for (const ch of digits) {
+    const pos = out.length;
+    const d = Number(ch);
+    if (pos >= (withTime ? 12 : 8)) break;
+    if (pos === 0 || pos === 2 || pos === 8 || pos === 10) {
+      // chữ số đầu của ngày / tháng / giờ / phút: lớn hơn mức này thì tự thêm số 0 phía trước
+      const autoAfter = { 0: 3, 2: 1, 8: 2, 10: 5 }[pos];
+      const seg = d > autoAfter ? "0" + ch : null;
+      if (seg) {
+        if (pos === 2 && Number(out.slice(0, 2)) > daysIn(d)) continue; // VD 31 rồi gõ tháng 4
+        out += seg;
+      } else out += ch;
+      continue;
+    }
+    if (pos === 1) {
+      const day = Number(out[0] + ch);
+      if (day < 1 || day > 31) continue;
+    } else if (pos === 3) {
+      const month = Number(out[2] + ch);
+      if (month < 1 || month > 12 || Number(out.slice(0, 2)) > daysIn(month)) continue;
+    } else if (pos >= 4 && pos <= 7) {
+      if (!yearPrefixOk(out.slice(4) + ch)) continue;
+    } else if (pos === 9) {
+      if (Number(out[8] + ch) > 23) continue;
+    } else if (pos === 11) {
+      if (Number(out[10] + ch) > 59) continue;
+    }
+    out += ch;
+    if (pos === 7) {
+      const max = daysIn(Number(out.slice(2, 4)), Number(out.slice(4, 8)));
+      if (Number(out.slice(0, 2)) > max) out = String(max) + out.slice(2);
+    }
+  }
+  return out;
+}
+
+// Ô đã đủ ngày mà sửa riêng tháng / năm làm ngày không còn tồn tại (VD 31/03 sửa tháng thành 04) → lùi về ngày cuối tháng
+function clampDay(text) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(text);
+  if (!m) return text;
+  const max = daysIn(Number(m[2]), Number(m[3]));
+  return Number(m[1]) > max ? String(max) + text.slice(2) : text;
+}
+
+// Giá trị một phần (ngày / tháng / năm / giờ / phút) có hợp lệ không, khi sửa riêng phần đó
+function segmentOk(i, digits, text) {
+  const n = Number(digits);
+  if (i === 0) {
+    const month = Number(text.slice(3, 5));
+    const year = Number(text.slice(6, 10));
+    const max = month >= 1 && month <= 12 ? daysIn(month, year >= YEAR_MIN ? year : undefined) : 31;
+    return digits.length < 2 || (n >= 1 && n <= max);
+  }
+  if (i === 1) return digits.length < 2 || (n >= 1 && n <= 12);
+  if (i === 2) return yearPrefixOk(digits);
+  if (i === 3) return n <= 23;
+  if (i === 4) return n <= 59;
+  return Boolean(text);
+}
+
 // Tự chèn "/" và khoảng trắng, ":" khi gõ số: 07102026 → 07/10/2026
 function mask(raw, withTime) {
-  const digits = raw.replace(/\D/g, "").slice(0, withTime ? 12 : 8);
+  const digits = cleanDigits(raw.replace(/\D/g, ""), withTime);
   let out = "";
   for (let i = 0; i < digits.length; i++) {
     if (i === 2 || i === 4) out += "/";
@@ -112,7 +191,9 @@ function DateInput({ value, onChange, withTime = false, min, max, id, disabled, 
 
   const setSegment = (i, digits, nextSel) => {
     const [a, b] = segmentsOf(withTime)[i];
-    const next = text.slice(0, a) + digits.padStart(b - a, "0").slice(-(b - a)) + text.slice(b);
+    let next = text.slice(0, a) + digits.padStart(b - a, "0").slice(-(b - a)) + text.slice(b);
+    // Năm gõ dở (VD 0002) thì chưa so ngày; đủ năm / đổi tháng thì lùi ngày không tồn tại về cuối tháng
+    if (i === 1 || (i === 2 && digits.length === 4)) next = clampDay(next);
     setText(next);
     emit(textToIso(next, withTime) || next);
     pendingSel.current = nextSel;
@@ -138,7 +219,10 @@ function DateInput({ value, onChange, withTime = false, min, max, id, disabled, 
     if (/^\d$/.test(e.key) && !allSelected) {
       e.preventDefault();
       const prev = typed.current.seg === i ? typed.current.digits : "";
-      const digits = prev + e.key;
+      let digits = prev + e.key;
+      // Số vừa gõ làm phần này vượt giới hạn (ngày 35, tháng 13, năm 3…) → coi như gõ lại từ đầu phần đó
+      if (!segmentOk(i, digits, text)) digits = e.key;
+      if (!segmentOk(i, digits, text)) return;
       const done = digits.length >= b - a || (autoAfter !== null && digits.length === 1 && Number(e.key) > autoAfter);
       if (done) {
         typed.current = { seg: -1, digits: "" };
@@ -155,7 +239,9 @@ function DateInput({ value, onChange, withTime = false, min, max, id, disabled, 
     } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
       e.preventDefault();
       typed.current = { seg: -1, digits: "" };
-      const [lo, hi] = RANGES[i];
+      const [lo, rangeHi] = RANGES[i];
+      // Ngày: tối đa theo đúng tháng / năm đang nhập (tháng 4 chỉ đến 30, tháng 2 đến 28 hoặc 29)
+      const hi = i === 0 ? daysIn(Number(text.slice(3, 5)) || 1, Number(text.slice(6, 10)) || undefined) : rangeHi;
       const cur = Number(text.slice(a, b));
       let n = Number.isNaN(cur) ? (e.key === "ArrowUp" ? lo : hi) : cur + (e.key === "ArrowUp" ? 1 : -1);
       if (n > hi) n = lo;
