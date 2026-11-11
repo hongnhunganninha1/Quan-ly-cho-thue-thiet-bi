@@ -525,6 +525,7 @@ function EquipmentDetailModal({
               name: "note",
               label: "Lý do",
               type: "textarea",
+              required: (f) => f.status === "INACTIVE" || f.status === "LIQUIDATED", // hiện dấu * khi chọn 2 trạng thái này
               full: true,
               maxLength: 255,
               hint: "Bắt buộc khi chuyển sang Ngừng hoạt động hoặc Đã thanh lý. Lý do được hiện trong hồ sơ máy.",
