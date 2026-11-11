@@ -204,6 +204,15 @@ function AvailabilityPage({ onNavigate }) {
 
       <section className="catalog-card">
         <form className="filter-bar availability-filters" onSubmit={search}>
+          <label className="search-field">
+            Tìm máy
+            <input
+              type="search"
+              placeholder="Mã, tên, model…"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+            />
+          </label>
           <label>
             Từ ngày
             <DateInput className="filter-date" value={from} onChange={setFrom} />
@@ -234,15 +243,6 @@ function AvailabilityPage({ onNavigate }) {
               ))}
               <option value="SITE">Đang ở công trình</option>
             </select>
-          </label>
-          <label className="search-field">
-            Tìm máy
-            <input
-              type="search"
-              placeholder="Mã, tên, model…"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-            />
           </label>
           <label className="filter-check">
             <input type="checkbox" checked={onlyFree} onChange={(e) => setOnlyFree(e.target.checked)} />
