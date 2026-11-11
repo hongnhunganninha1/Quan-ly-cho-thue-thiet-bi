@@ -63,7 +63,7 @@ export const MENU = [
       { key: "report-equipment", label: "Kiểm kê thiết bị" },
       { key: "report-revenue", label: "Doanh thu", roles: ["ADMIN"] },
       { key: "report-utilization", label: "Hiệu suất thiết bị", roles: ["ADMIN"] },
-      { key: "report-contract", label: "Hợp đồng thuê", roles: ["ADMIN"] },
+      { key: "report-contract", label: "Thống kê hợp đồng", roles: ["ADMIN"] },
       { key: "report-debt", label: "Công nợ", roles: ["ADMIN"] },
     ],
   },
