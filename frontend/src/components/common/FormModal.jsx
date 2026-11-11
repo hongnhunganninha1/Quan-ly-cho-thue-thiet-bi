@@ -11,7 +11,7 @@ import MoneyInput from "./MoneyInput";
 //   name, label, type: "text" | "number" | "money" (tự chèn dấu chấm: 8.000.000) | "email" | "select" | "textarea" | "date" | "datetime-local"
 //                      | "checkbox" | "file" | "section" (dòng tiêu đề nhóm, không phải ô nhập)
 //                      | "custom" (tự vẽ ô nhập bằng render({ form, value, setValue, id, invalid, autoFocus })),
-//   required, placeholder, hint (chuỗi hoặc (form) => chuỗi), maxLength, accept (file), options: [{ value, label }],
+//   required (true hoặc (form) => true/false), placeholder, hint (chuỗi hoặc (form) => chuỗi), maxLength, accept (file), options: [{ value, label }],
 //   emptyOption: "— Chọn —"  → thêm dòng trống đầu danh sách chọn,
 //   full: true          → chiếm cả hàng (mặc định chiếm nửa hàng),
 //   span: số | (form) => số → độ rộng theo lưới 6 cột (2 = 1/3 hàng, 3 = nửa hàng, 4 = 2/3 hàng);
@@ -58,6 +58,8 @@ function FormModal({
   };
   const hintOf = (f) => (typeof f.hint === "function" ? f.hint(form) : f.hint);
   const isDisabled = (f) => (f.disabled ? f.disabled(form, row) : false);
+  // required có thể là hàm (form) => true/false: ô chỉ bắt buộc trong một số trường hợp (VD lý do khi ngừng hoạt động)
+  const isRequired = (f) => (typeof f.required === "function" ? f.required(form) : f.required);
 
   const setValue = (field, value) => {
     setForm((prev) => ({ ...prev, [field.name]: field.uppercase ? value.toUpperCase() : value }));
@@ -69,7 +71,7 @@ function FormModal({
 
     // Kiểm tra ô bắt buộc ngay trên trình duyệt; các điều kiện khác do backend kiểm tra
     const missing = visibleFields.find(
-      (f) => f.required && !isDisabled(f) && f.type !== "section" && String(form[f.name] ?? "").trim() === "",
+      (f) => isRequired(f) && !isDisabled(f) && f.type !== "section" && String(form[f.name] ?? "").trim() === "",
     );
     if (missing) {
       setError(`Vui lòng nhập ${missing.label.toLowerCase()}.`);
@@ -237,7 +239,7 @@ function FormModal({
                   {f.type !== "checkbox" && (
                     <label htmlFor={`field-${f.name}`}>
                       {f.label}
-                      {f.required && <span className="required-mark"> *</span>}
+                      {isRequired(f) && <span className="required-mark"> *</span>}
                     </label>
                   )}
                   {renderInput(f, i === 0)}
