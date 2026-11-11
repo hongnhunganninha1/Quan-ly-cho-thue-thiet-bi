@@ -12,7 +12,11 @@ const FIELDS = ["full_name", "gender", "date_of_birth", "id_number", "phone", "e
 
 function validateEmployee(body) {
   const data = pick(body, FIELDS);
-  required(data, { full_name: "họ tên", department_id: "phòng ban" });
+  // Hồ sơ nhân viên: bắt buộc nhập đủ, chỉ địa chỉ được để trống
+  required(data, {
+    full_name: "họ tên", department_id: "phòng ban", gender: "giới tính", date_of_birth: "ngày sinh", id_number: "số CCCD",
+    phone: "số điện thoại", email: "email công ty", position: "chức vụ", hire_date: "ngày vào làm",
+  });
   maxLength(data, { full_name: ["Họ tên", 50], email: ["Email", 100], address: ["Địa chỉ", 255], position: ["Chức vụ", 50] });
   if (data.gender && !["MALE", "FEMALE", "OTHER"].includes(data.gender)) throw new HttpError(400, "Giới tính không hợp lệ.");
   data.status = data.status || "WORKING";
