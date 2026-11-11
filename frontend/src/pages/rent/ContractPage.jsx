@@ -98,21 +98,23 @@ function ContractPage({ user, navParam }) {
         </button>
       </div>
 
+      {/* Tab trạng thái nằm ngoài khung danh sách, ngay dưới tiêu đề trang */}
+      <div className="status-tabs">
+        {CONTRACT_TABS.map((t) => (
+          <button
+            key={t.key}
+            className={`status-tab ${tab === t.key ? "active" : ""}`}
+            onClick={() => {
+              setTab(t.key);
+            }}
+          >
+            {t.label}
+            <span className="count">{counts[t.key]}</span>
+          </button>
+        ))}
+      </div>
+
       <section className="catalog-card">
-        <div className="status-tabs">
-          {CONTRACT_TABS.map((t) => (
-            <button
-              key={t.key}
-              className={`status-tab ${tab === t.key ? "active" : ""}`}
-              onClick={() => {
-                setTab(t.key);
-              }}
-            >
-              {t.label}
-              <span className="count">{counts[t.key]}</span>
-            </button>
-          ))}
-        </div>
         <div className="toolbar">
           <label className="search-box">
             <SearchIcon />

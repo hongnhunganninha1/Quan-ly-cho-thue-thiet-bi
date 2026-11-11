@@ -89,16 +89,17 @@ function HandoverPage({ user }) {
         </div>
       </div>
 
-      <section className="catalog-card">
-        <div className="status-tabs">
-          <button className={`status-tab ${tab === "pending" ? "active" : ""}`} onClick={() => setTab("pending")}>
-            Chờ bàn giao <span className="count">{pendingList.length}</span>
-          </button>
-          <button className={`status-tab ${tab === "history" ? "active" : ""}`} onClick={() => setTab("history")}>
-            Phiếu đã lập <span className="count">{historyList.length}</span>
-          </button>
-        </div>
+      {/* Tab trạng thái nằm ngoài khung danh sách, ngay dưới tiêu đề trang */}
+      <div className="status-tabs">
+        <button className={`status-tab ${tab === "pending" ? "active" : ""}`} onClick={() => setTab("pending")}>
+          Chờ bàn giao <span className="count">{pendingList.length}</span>
+        </button>
+        <button className={`status-tab ${tab === "history" ? "active" : ""}`} onClick={() => setTab("history")}>
+          Phiếu đã lập <span className="count">{historyList.length}</span>
+        </button>
+      </div>
 
+      <section className="catalog-card">
         <div className="toolbar">
           <label className="search-box">
             <SearchIcon />

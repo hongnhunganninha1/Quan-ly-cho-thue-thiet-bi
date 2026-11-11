@@ -11,6 +11,13 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* Tab đặt ngoài khung danh sách (dưới tiêu đề trang): bỏ khung, sát khung danh sách hơn */
+.catalog > .status-tabs {
+  padding: 0;
+  border-bottom: none;
+  margin-bottom: -6px;
+}
+
 .status-tab {
   height: 32px;
   padding: 0 12px;
