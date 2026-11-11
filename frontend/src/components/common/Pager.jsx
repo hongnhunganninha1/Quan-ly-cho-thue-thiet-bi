@@ -19,13 +19,15 @@ export function PageSizeSelect({ pager }) {
   );
 }
 
-// Các số trang hiển thị: luôn có trang đầu, trang cuối và 2 trang quanh trang hiện tại; khoảng trống thay bằng "…"
+// Các số trang hiển thị: 3 trang liền nhau quanh trang hiện tại (VD 1 2 3 …, 2 3 4 …),
+// còn trang phía trước / phía sau thì hiện "…"; về trang đầu / trang cuối bằng nút « »
 function pageList(page, totalPages) {
+  const first = Math.max(1, Math.min(page - 1, totalPages - 2));
+  const last = Math.min(totalPages, first + 2);
   const pages = [];
-  for (let p = 1; p <= totalPages; p++) {
-    if (p === 1 || p === totalPages || Math.abs(p - page) <= 1) pages.push(p);
-    else if (pages[pages.length - 1] !== "…") pages.push("…");
-  }
+  if (first > 1) pages.push("…");
+  for (let p = first; p <= last; p++) pages.push(p);
+  if (last < totalPages) pages.push("…");
   return pages;
 }
 
