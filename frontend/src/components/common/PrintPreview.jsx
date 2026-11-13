@@ -2,16 +2,20 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import "./PrintPreview.css";
 
-// Xem trước bản in (hợp đồng, biên bản bàn giao / thu hồi) trước khi in.
-// load(): hàm async trả về { title, html } (xem utils/printDocs.js).
-// Bấm "In / Lưu PDF" mới mở hộp thoại in của trình duyệt (chọn "Lưu dưới dạng PDF" để lấy file); "Đóng" để thoát.
+// In hợp đồng, biên bản bàn giao / thu hồi: bấm In là mở thẳng hộp thoại in của trình duyệt
+// (xem trước, chọn máy in hoặc "Lưu dưới dạng PDF" ngay trong hộp thoại đó), không qua khung xem trước.
+// load(): hàm async trả về { title, html } (xem utils/printDocs.js). Văn bản được nạp vào một khung ẩn rồi in.
 function PrintPreview({ load, onClose }) {
   const [doc, setDoc] = useState(null);
   const [error, setError] = useState("");
   const frameRef = useRef(null);
+  const printed = useRef(false);
 
   useEffect(() => {
     let alive = true;
+    printed.current = false; // bấm In văn bản khác thì in lại từ đầu
+    setDoc(null);
+    setError("");
     load()
       .then((d) => alive && setDoc(d))
       .catch((err) => alive && setError(err.message || "Không tải được dữ liệu để in."));
@@ -26,40 +30,51 @@ function PrintPreview({ load, onClose }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const print = () => {
+  // Khung ẩn đã tải xong văn bản (kể cả ảnh đồng hồ giờ máy) → mở hộp thoại in; in xong / huỷ thì đóng
+  const printWhenReady = () => {
     const w = frameRef.current?.contentWindow;
-    if (!w) return;
-    w.focus();
-    w.print();
+    if (!w || printed.current) return;
+    printed.current = true;
+    const title = document.title;
+    document.title = doc.title; // tên file PDF gợi ý = tên văn bản
+    w.addEventListener("afterprint", () => setTimeout(onClose, 0), { once: true });
+    setTimeout(() => {
+      w.focus();
+      w.print();
+      document.title = title;
+    }, 50);
   };
 
   return createPortal(
-    <div className="modal-backdrop print-preview-backdrop" onMouseDown={onClose}>
-      <div className="print-preview" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
-        <header className="print-preview-bar">
-          <div>
-            <strong>{doc ? doc.title : "Bản xem trước"}</strong>
-            <span>Xem lại nội dung, bấm "In / Lưu PDF" để in hoặc lưu thành file PDF.</span>
+    <>
+      {doc && (
+        <iframe
+          ref={frameRef}
+          className="print-frame"
+          title={doc.title}
+          srcDoc={doc.html}
+          onLoad={printWhenReady}
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+      )}
+      {(error || !doc) && (
+        <div className="modal-backdrop print-preview-backdrop" onMouseDown={onClose}>
+          <div className="print-status" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
+            {error ? (
+              <>
+                <div className="modal-error">{error}</div>
+                <button type="button" className="btn btn-secondary" onClick={onClose}>
+                  Đóng
+                </button>
+              </>
+            ) : (
+              <p className="print-preview-loading">Đang chuẩn bị bản in…</p>
+            )}
           </div>
-          <button type="button" className="modal-close" onClick={onClose} aria-label="Đóng">
-            ×
-          </button>
-        </header>
-        <div className="print-preview-body">
-          {error && <div className="modal-error">{error}</div>}
-          {!doc && !error && <p className="print-preview-loading">Đang chuẩn bị bản in…</p>}
-          {doc && <iframe ref={frameRef} title={doc.title} srcDoc={doc.html} />}
         </div>
-        <footer className="print-preview-actions">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>
-            Đóng
-          </button>
-          <button type="button" className="btn btn-primary" onClick={print} disabled={!doc}>
-            In / Lưu PDF
-          </button>
-        </footer>
-      </div>
-    </div>,
+      )}
+    </>,
     document.body,
   );
 }

@@ -1,6 +1,6 @@
 // Bản in hợp đồng cho thuê (kèm biên bản quyết toán nếu đã quyết toán), biên bản bàn giao, biên bản thu hồi.
 // Văn bản theo thể thức Việt Nam (quốc hiệu, tiêu ngữ, căn cứ, điều khoản, chữ ký). Hiện bản xem trước
-// (components/common/PrintPreview.jsx); bấm "In / Lưu PDF" mới mở hộp thoại in – chọn "Lưu dưới dạng PDF" để lấy file.
+// Bấm In là mở thẳng hộp thoại in của trình duyệt (components/common/PrintPreview.jsx) – chọn "Lưu dưới dạng PDF" để lấy file.
 import { api } from "../api/client";
 import { COMPANY } from "./reportInfo";
 
@@ -63,7 +63,14 @@ export function moneyInWords(value) {
 
 // ----- Khung văn bản chung -----
 const CSS = `
-  @page { size: A4 portrait; margin: 18mm 18mm 18mm 25mm; }
+  /* Lề trang theo thể thức văn bản; số trang (1, 2, 3…) ở giữa chân trang. Khai báo nội dung lề trang
+     thì Chrome không in thêm ngày giờ, tiêu đề, địa chỉ web ở đầu / chân trang. */
+  @page {
+    size: A4 portrait; margin: 15mm 15mm 15mm 25mm;
+    @top-left { content: ""; } @top-center { content: ""; } @top-right { content: ""; }
+    @bottom-left { content: ""; } @bottom-right { content: ""; }
+    @bottom-center { content: counter(page); font-family: "Times New Roman", Times, serif; font-size: 12pt; }
+  }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: "Times New Roman", Times, serif; font-size: 13pt; line-height: 1.45; color: #000; }
   .doc { max-width: 170mm; margin: 0 auto; padding: 8mm 0; position: relative; }
@@ -77,10 +84,13 @@ const CSS = `
   h2 { font-size: 13pt; margin: 14px 0 4px; }
   p { margin: 3px 0; text-align: justify; }
   .party { margin: 6px 0; }
-  .party p { margin: 1px 0; }
-  table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 12pt; table-layout: fixed; }
+  .party p { margin: 1px 0; text-align: left; }
+  /* Kẻ bảng kiểu "separate" (viền trên + trái của bảng, viền phải + dưới của ô): khi in / lưu PDF không bị mất nét */
+  table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 6px 0; font-size: 12pt; table-layout: fixed;
+          border-top: 1px solid #000; border-left: 1px solid #000; }
   td small { font-size: 10.5pt; }
-  th, td { border: 1px solid #000; padding: 4px 5px; vertical-align: top; overflow-wrap: anywhere; }
+  th, td { border-right: 1px solid #000; border-bottom: 1px solid #000; padding: 4px 5px; vertical-align: top; overflow-wrap: anywhere; }
+  tr { page-break-inside: avoid; }
   th { text-align: center; font-weight: bold; }
   .r { text-align: right; }
   .c { text-align: center; }
@@ -128,7 +138,8 @@ function partyB(role, cu, person) {
     <div class="party">
       <p><b>${role}: ${esc(company ? cu.name : `Ông/Bà ${cu.name}`)}</b></p>
       ${cu.address ? `<p>Địa chỉ: ${esc(cu.address)}</p>` : ""}
-      <p>${company ? "Mã số thuế" : "Số CCCD"}: ${esc(cu.id_number)} &nbsp;&nbsp; Điện thoại: ${esc(cu.phone)}${cu.email ? ` &nbsp;&nbsp; Email: ${esc(cu.email)}` : ""}</p>
+      <p>${company ? "Mã số thuế" : "Số CCCD"}: ${esc(cu.id_number)} &nbsp;&nbsp; Điện thoại: ${esc(cu.phone)}</p>
+      ${cu.email ? `<p>Email: ${esc(cu.email)}</p>` : ""}
       ${cu.bank_account ? `<p>Số tài khoản: ${esc(cu.bank_account)}${cu.bank_name ? ` tại ${esc(cu.bank_name)}` : ""}</p>` : ""}
       ${person ?? (company ? `<p>Đại diện: Ông/Bà <b>${esc(cu.representative)}</b>${cu.representative_title ? ` &nbsp;&nbsp; Chức vụ: ${esc(cu.representative_title)}` : ""}</p>` : "")}
     </div>`;
@@ -164,7 +175,7 @@ function contractBody(c) {
         <td class="c">${k + 1}</td>
         <td>${equipmentName(i)}</td>
         <td class="c">${esc(i.manufacture_year)}</td>
-        <td>${esc(i.serial_number)}</td>
+        <td class="c">${esc(i.serial_number)}</td>
         <td class="r">${num(i.unit_price)}</td>
         <td class="r">${num(i.planned_duration)} ${unit}</td>
         <td class="r">${num(i.amount)}</td>
@@ -188,15 +199,15 @@ function contractBody(c) {
     <h2>Điều 1. Thiết bị cho thuê</h2>
     <table>
       <colgroup><col style="width:7%"><col style="width:24%"><col style="width:9%"><col style="width:18%"><col style="width:16%"><col style="width:11%"><col style="width:15%"></colgroup>
-      <thead><tr><th>STT</th><th>Tên thiết bị</th><th>Năm SX</th><th>Số serial (số khung)</th>
+      <thead><tr><th>STT</th><th>Tên thiết bị</th><th>Năm SX</th><th>Số serial<br>(số khung)</th>
         <th>Đơn giá thuê<br>(đồng/${unit})</th><th>Thời lượng</th><th>Thành tiền (đồng)</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     ${
       byDay
-        ? `<p>Đơn giá tính phí vượt giờ (đồng/giờ): ${c.items
-            .map((i, k) => `STT ${k + 1} – ${equipmentName(i)}: <b>${num(i.hourly_rate)}</b>`)
-            .join("; ")}.</p>`
+        ? c.items.length === 1
+          ? `<p>Đơn giá tính phí vượt giờ: <b>${num(c.items[0].hourly_rate)} đồng/giờ</b>.</p>`
+          : `<p>Đơn giá tính phí vượt giờ: ${c.items.map((i, k) => `STT ${k + 1}: <b>${num(i.hourly_rate)} đồng/giờ</b>`).join("; ")}.</p>`
         : ""
     }
     <p>Thiết bị được giao đúng chủng loại, hoạt động bình thường, kèm biên bản bàn giao có ghi số giờ máy và ảnh chụp đồng hồ giờ máy.</p>
@@ -213,7 +224,7 @@ function contractBody(c) {
     <h2>Điều 3. Giá trị hợp đồng</h2>
     <table class="kv">
       <tr><td>Tiền thuê thiết bị</td><td class="r">${money(c.subtotal)}</td></tr>
-      <tr><td>Chiết khấu (${num(c.discount_rate)}%)</td><td class="r">– ${money(c.discount_amount)}</td></tr>
+      <tr><td>Chiết khấu (${num(c.discount_rate)}%)</td><td class="r">${money(c.discount_amount)}</td></tr>
       <tr><td>Phí vận chuyển</td><td class="r">${money(c.transport_fee)}</td></tr>
       <tr><td>Cộng trước thuế</td><td class="r">${money(afterDiscount + Number(c.transport_fee))}</td></tr>
       <tr><td>Thuế GTGT (${num(c.vat_rate)}%)</td><td class="r">${money(c.vat_amount)}</td></tr>
@@ -263,7 +274,6 @@ function contractBody(c) {
       ["Đại diện bên A", "(Ký, ghi rõ họ tên, đóng dấu)", COMPANY.director],
       ["Đại diện bên B", cu.customer_type === "COMPANY" ? "(Ký, ghi rõ họ tên, đóng dấu)" : "(Ký, ghi rõ họ tên)", cu.representative],
     )}
-    <p style="margin-top:18px;font-size:11pt"><i>Người lập hợp đồng: ${esc(c.created_by_name)}${c.approved_by_name ? ` · Người duyệt: ${esc(c.approved_by_name)}` : ""}</i></p>
     ${c.settlement && c.settlement.confirmed_at ? settlementBody(c) : ""}`;
 }
 
@@ -296,7 +306,7 @@ function settlementBody(c) {
       <tr><td>Phí vượt giờ</td><td class="r">${money(s.overtime_fee_total)}</td></tr>
       <tr><td>Tiền bồi thường (không chịu thuế GTGT)</td><td class="r">${money(s.compensation_total)}</td></tr>
       <tr><td>Thuế GTGT</td><td class="r">${money(s.vat_amount)}</td></tr>
-      <tr><td>Trừ tiền đặt cọc đã nhận</td><td class="r">– ${money(s.deposit_amount)}</td></tr>
+      <tr><td>Trừ tiền đặt cọc đã nhận</td><td class="r">${money(s.deposit_amount)}</td></tr>
       <tr class="total"><td>${due >= 0 ? "BÊN B CÒN PHẢI THANH TOÁN" : "BÊN A HOÀN LẠI CHO BÊN B"}</td><td class="r">${money(Math.abs(due))}</td></tr>
       <tr><td>Đã thanh toán / đã hoàn</td><td class="r">${money(s.paid_amount)}</td></tr>
       <tr><td>Tình trạng thanh toán</td><td class="r">${esc(status)}</td></tr>
