@@ -7,7 +7,7 @@ import { CONTRACT_STATUS, PRICING_TYPE, toOptions } from "../../utils/labels";
 import { dateError } from "../../utils/dateLimits";
 import DateInput from "../../components/common/DateInput";
 
-// Báo cáo hợp đồng thuê: các hợp đồng có ngày bắt đầu trong kỳ
+// Báo cáo thống kê hợp đồng: các hợp đồng có ngày bắt đầu trong kỳ
 function ContractReport({ user }) {
   const year = new Date().getFullYear();
   const [filter, setFilter] = useState({ from: `${year}-01-01`, to: todayISO(), status: "" });
@@ -27,7 +27,7 @@ function ContractReport({ user }) {
 
   return (
     <ReportShell
-      title="Báo cáo hợp đồng thuê"
+      title="Báo cáo thống kê hợp đồng"
       description="Danh sách hợp đồng có ngày bắt đầu thuê trong kỳ, kèm giá trị và tình trạng."
       user={user}
       print={{
