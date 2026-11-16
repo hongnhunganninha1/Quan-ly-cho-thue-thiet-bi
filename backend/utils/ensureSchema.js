@@ -91,6 +91,24 @@ const PRICE_HISTORY_SQL = `
     INDEX idx_ph_eq_time (equipment_id, changed_at)
   ) COMMENT='Rental price change history (audit log)'`;
 
+// Chi phí sửa chữa máy hư hỏng: ghi khi Quản lý chuyển máy từ "Ngừng hoạt động" về "Sẵn sàng" (sửa xong)
+const REPAIR_SQL = `
+  CREATE TABLE IF NOT EXISTS equipment_repairs (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    equipment_id INT NOT NULL,
+    return_id    INT NULL COMMENT 'Phiếu thu hồi ghi nhận hư hỏng (NULL = máy hỏng không do khách thuê)',
+    description  VARCHAR(255) NULL COMMENT 'Nội dung sửa chữa',
+    repair_cost  DECIMAL(15,0) NOT NULL DEFAULT 0 COMMENT 'Chi phí sửa chữa thực tế (vật tư + nhân công)',
+    repaired_at  DATETIME NOT NULL COMMENT 'Thời điểm sửa xong, máy hoạt động lại',
+    created_by   INT NULL,
+    created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_rep_eq   FOREIGN KEY (equipment_id) REFERENCES equipments(id) ON DELETE CASCADE,
+    CONSTRAINT fk_rep_ret  FOREIGN KEY (return_id)    REFERENCES equipment_returns(id),
+    CONSTRAINT fk_rep_user FOREIGN KEY (created_by)   REFERENCES users(id),
+    CONSTRAINT chk_rep_cost CHECK (repair_cost >= 0),
+    INDEX idx_rep_time (repaired_at)
+  ) COMMENT='Repair cost of damaged equipment (audit log, not an ERD entity)'`;
+
 const REPORT_VIEW_SQL = `
   CREATE OR REPLACE VIEW v_report_equipment_status AS
   SELECT g.id AS group_id, g.code AS group_code, g.name AS group_name,
@@ -287,6 +305,15 @@ async function ensureSchema() {
       [manager.id]
     );
     if (fixed.affectedRows > 0) console.log(`Đã ghi người nhập giá ban đầu cho ${fixed.affectedRows} dòng lịch sử giá.`);
+  }
+
+  // Bảng chi phí sửa chữa (CSDL tạo từ bản cũ chưa có)
+  const [[repairTable]] = await pool.query(
+    "SELECT COUNT(*) AS total FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'equipment_repairs'"
+  );
+  if (repairTable.total === 0) {
+    await pool.query(REPAIR_SQL);
+    console.log("Đã tạo bảng equipment_repairs (chi phí sửa chữa thiết bị).");
   }
 
   // View báo cáo kiểm kê theo nhóm -> loại (CSDL tạo từ bản cũ chưa có cột group_id)
