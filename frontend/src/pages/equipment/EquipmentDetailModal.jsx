@@ -528,8 +528,22 @@ function EquipmentDetailModal({
               required: (f) => f.status === "INACTIVE" || f.status === "LIQUIDATED", // hiện dấu * khi chọn 2 trạng thái này
               full: true,
               maxLength: 255,
-              hint: "Bắt buộc khi chuyển sang Ngừng hoạt động hoặc Đã thanh lý. Lý do được hiện trong hồ sơ máy.",
+              hint: (f) =>
+                eq.status === "INACTIVE" && f.status === "AVAILABLE"
+                  ? "Ghi nội dung đã sửa chữa (VD: Thay 2 răng gầu, hàn xi lanh nghiêng gầu)."
+                  : "Bắt buộc khi chuyển sang Ngừng hoạt động hoặc Đã thanh lý. Lý do được hiện trong hồ sơ máy.",
               placeholder: "VD: Hỏng bơm thuỷ lực, đưa đi sửa",
+            },
+            {
+              // Máy sửa xong (Ngừng hoạt động → Sẵn sàng): ghi chi phí sửa chữa thực tế để báo cáo so với tiền bồi thường
+              name: "repair_cost",
+              label: "Chi phí sửa chữa (₫)",
+              type: "money",
+              full: true,
+              required: true,
+              show: (f) => eq.status === "INACTIVE" && f.status === "AVAILABLE",
+              hint: "Tổng vật tư + nhân công đã chi để sửa máy. Không tốn chi phí thì nhập 0.",
+              placeholder: "VD: 8.500.000",
             },
           ]}
           initialValues={{}}

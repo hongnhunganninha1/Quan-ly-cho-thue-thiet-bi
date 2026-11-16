@@ -11,6 +11,8 @@ function RevenueReport({ user }) {
   const sum = (key) => months.reduce((s, m) => s + Number(m[key] || 0), 0);
   const max = Math.max(1, ...months.map((m) => Number(m.revenue)));
   const years = Array.from(new Set([new Date().getFullYear(), ...(data?.years || [])])).sort((a, b) => b - a);
+  // Chi phí sửa chữa máy hư hỏng (sửa xong trong năm)
+  const repairs = data?.repairs || { count: 0, cost: 0, compensation: 0, waiting: 0 };
   const best = months.reduce((b, m) => (Number(m.revenue) > Number(b?.revenue || 0) ? m : b), null);
   // Sắp xếp biểu đồ và bảng: theo tháng (mặc định) / doanh thu cao → thấp / thấp → cao
   const [order, setOrder] = useState("month");
@@ -118,6 +120,13 @@ function RevenueReport({ user }) {
             <div className="kpi">
               <span>Phí vượt giờ</span>
               <strong>{formatMoney(sum("extra_fees"))}</strong>
+            </div>
+            <div className="kpi">
+              <span>Chi phí sửa chữa</span>
+              <strong>{formatMoney(repairs.cost)}</strong>
+              <small>
+                {repairs.count} lần sửa{repairs.waiting ? ` · ${repairs.waiting} máy đang chờ sửa` : ""}
+              </small>
             </div>
             <div className="kpi">
               <span>Tháng cao nhất</span>
