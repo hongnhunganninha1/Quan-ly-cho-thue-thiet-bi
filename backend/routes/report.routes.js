@@ -46,7 +46,25 @@ router.get("/revenue", adminOnly, async (req, res) => {
     const period = `${year}-${String(i + 1).padStart(2, "0")}`;
     return rows.find((r) => r.period === period) || { period, contracts: 0, rental_revenue: 0, extra_fees: 0, compensation: 0, revenue: 0, vat: 0 };
   });
-  res.json({ year, months, years: years.map((y) => y.y) });
+  // Chi phí sửa chữa máy hư hỏng trong năm (theo ngày sửa xong) và phần bồi thường của khách cho chính các lần hỏng đó
+  const [[repairs]] = await pool.query(
+    `SELECT COUNT(*) AS count, COALESCE(SUM(rp.repair_cost), 0) AS cost,
+            COALESCE(SUM(r.compensation_amount), 0) AS compensation,
+            SUM(rp.return_id IS NOT NULL) AS from_returns
+       FROM equipment_repairs rp
+       LEFT JOIN equipment_returns r ON r.id = rp.return_id
+      WHERE YEAR(rp.repaired_at) = ?`,
+    [year]
+  );
+  // Máy đang chờ sửa: thu hồi bị hư hỏng, vẫn đang Ngừng hoạt động, chưa có phiếu sửa
+  const [[waiting]] = await pool.query(
+    `SELECT COUNT(DISTINCT e.id) AS count FROM equipments e
+       JOIN contract_details cd ON cd.equipment_id = e.id
+       JOIN equipment_returns r ON r.contract_detail_id = cd.id AND r.is_damaged = 1
+       LEFT JOIN equipment_repairs rp ON rp.return_id = r.id
+      WHERE e.status = 'INACTIVE' AND rp.id IS NULL`
+  );
+  res.json({ year, months, years: years.map((y) => y.y), repairs: { ...repairs, waiting: waiting.count } });
 });
 
 // GET /api/reports/utilization?from=&to= – hiệu suất sử dụng = số ngày máy được thuê / số ngày trong kỳ

@@ -334,6 +334,26 @@ router.patch("/:id/status", requireRole("ADMIN"), async (req, res) => {
     if (eq.status === status) throw new HttpError(400, "Máy đang ở trạng thái này rồi.");
     const extra = status === "LIQUIDATED" ? { warehouse_id: null } : {};
     if (status !== "AVAILABLE" && !note) throw new HttpError(400, "Vui lòng nhập lý do ngừng hoạt động / thanh lý.");
+    // Sửa xong (Ngừng hoạt động → Sẵn sàng): bắt buộc ghi chi phí sửa chữa thực tế, gắn với phiếu thu hồi
+    // ghi nhận hư hỏng gần nhất của máy (nếu có) để báo cáo so sánh với tiền bồi thường đã thu của khách
+    if (eq.status === "INACTIVE" && status === "AVAILABLE") {
+      const raw = req.body?.repair_cost;
+      const cost = Number(String(raw ?? "").replace(/\D/g, ""));
+      if (raw === undefined || raw === null || String(raw).trim() === "" || !Number.isFinite(cost)) {
+        throw new HttpError(400, "Vui lòng nhập chi phí sửa chữa (không tốn chi phí thì nhập 0).");
+      }
+      const [[ret]] = await conn.query(
+        `SELECT r.id FROM equipment_returns r
+           JOIN contract_details cd ON cd.id = r.contract_detail_id
+           LEFT JOIN equipment_repairs rp ON rp.return_id = r.id
+          WHERE cd.equipment_id = ? AND r.is_damaged = 1 AND rp.id IS NULL
+          ORDER BY r.returned_at DESC LIMIT 1`,
+        [id]
+      );
+      await conn.query("INSERT INTO equipment_repairs SET ?", [
+        { equipment_id: id, return_id: ret?.id ?? null, description: note, repair_cost: cost, repaired_at: new Date(), created_by: req.user.id },
+      ]);
+    }
     // Máy sửa xong mà đang có hợp đồng chờ thì giữ chỗ cho hợp đồng đó, giống lúc thu hồi máy
     const next = status === "AVAILABLE" && (await hasWaitingContract(conn, id)) ? "RESERVED" : status;
     await setEquipmentStatus(conn, id, next, { note, extra });
