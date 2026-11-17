@@ -1,3 +1,5 @@
+import { moneyInWords } from "./moneyWords";
+
 // Thông tin doanh nghiệp và chức danh ký, dùng chung cho bản in (PDF) và file Excel của các báo cáo
 
 export const COMPANY = {
@@ -36,4 +38,10 @@ export function rowNumbers(rows) {
     }
   }
   return result;
+}
+
+// Dòng đọc số tiền bằng chữ dưới bảng báo cáo. words: [[nhãn, số tiền], ...]
+// → ["Tổng tiền thanh toán (bằng chữ): Một tỷ … đồng.", ...]
+export function wordLines(words = []) {
+  return words.map(([label, amount]) => `${label} (bằng chữ): ${moneyInWords(amount)}.`);
 }

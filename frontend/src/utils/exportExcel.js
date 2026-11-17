@@ -39,6 +39,7 @@ const STYLE = {
   titleNavy: 15, boldNavy: 16,
   groupText: 17, groupNumber: 18, groupDecimal: 19, groupCenter: 20,
   totalText: 21, totalNumber: 22, totalDecimal: 23, totalCenter: 24,
+  boldItalic: 25, // dòng số tiền bằng chữ
 };
 const NUMERIC_STYLES = [3, 8, 9, 10, 18, 19, 22, 23];
 
@@ -94,7 +95,7 @@ const STYLES_XML =
   XML_HEAD +
   '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
   '<numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0"/><numFmt numFmtId="165" formatCode="#,##0.0"/></numFmts>' +
-  '<fonts count="8">' +
+  '<fonts count="9">' +
   '<font><sz val="11"/><name val="Times New Roman"/></font>' +
   '<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Times New Roman"/></font>' +
   '<font><b/><sz val="14"/><name val="Times New Roman"/></font>' +
@@ -103,16 +104,17 @@ const STYLES_XML =
   '<font><b/><sz val="15"/><color rgb="FF1F3B63"/><name val="Times New Roman"/></font>' + // 5 tiêu đề xanh đậm
   '<font><b/><sz val="11"/><color rgb="FF1F3B63"/><name val="Times New Roman"/></font>' + // 6 đậm xanh
   '<font><b/><sz val="11"/><color rgb="FF9A3F06"/><name val="Times New Roman"/></font>' + // 7 đậm cam (dòng tổng)
+  '<font><b/><i/><sz val="11"/><name val="Times New Roman"/></font>' + // 8 đậm nghiêng (bằng chữ)
   "</fonts>" +
   '<fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
   '<fill><patternFill patternType="solid"><fgColor rgb="FF1F3B63"/><bgColor indexed="64"/></patternFill></fill>' + // 2 xanh đậm (tiêu đề cột)
   '<fill><patternFill patternType="solid"><fgColor rgb="FFE3EAF4"/><bgColor indexed="64"/></patternFill></fill>' + // 3 xanh nhạt (dòng nhóm)
   '<fill><patternFill patternType="solid"><fgColor rgb="FFFDEBDD"/><bgColor indexed="64"/></patternFill></fill></fills>' + // 4 cam nhạt (dòng tổng)
   '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>' +
-  '<border><left style="thin"><color rgb="FFBFC7D5"/></left><right style="thin"><color rgb="FFBFC7D5"/></right>' +
-  '<top style="thin"><color rgb="FFBFC7D5"/></top><bottom style="thin"><color rgb="FFBFC7D5"/></bottom><diagonal/></border></borders>' +
+  '<border><left style="thin"><color rgb="FF2B3A4F"/></left><right style="thin"><color rgb="FF2B3A4F"/></right>' +
+  '<top style="thin"><color rgb="FF2B3A4F"/></top><bottom style="thin"><color rgb="FF2B3A4F"/></bottom><diagonal/></border></borders>' +
   '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-  '<cellXfs count="25">' +
+  '<cellXfs count="26">' +
   '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
   '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
   '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>' +
@@ -143,6 +145,7 @@ const STYLES_XML =
   '<xf numFmtId="164" fontId="7" fillId="4" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>' +
   '<xf numFmtId="165" fontId="7" fillId="4" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>' +
   '<xf numFmtId="0" fontId="7" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top"/></xf>' +
+  '<xf numFmtId="0" fontId="8" fillId="0" borderId="0" xfId="0" applyFont="1"/>' + // 25 đậm nghiêng
   "</cellXfs>" +
   '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
   "</styleSheet>";
@@ -298,7 +301,8 @@ export function exportExcel(opts) {
 
 // ----- File Excel cho báo cáo (cùng nội dung với bản in) -----
 // report: { title, formCode, period, unit, sections: [{ title, columns: [{ label, align, width }], rows: [{ cells, kind }] }],
-//           notes, signers, preparedBy, company, rowNumbers }
+//           notes, signers, preparedBy, company, rowNumbers, wordLines }
+//   section.words: [[nhãn, số tiền], ...] – đọc số tiền bằng chữ dưới bảng
 
 // Số trong báo cáo đang ở dạng chữ kiểu Việt Nam ("1.234.567", "45,5", "-") → đổi lại thành số để Excel tính được
 function toNumber(value) {
@@ -399,6 +403,7 @@ function reportSheetXml(report) {
       });
       out.push(`<row r="${r}">${cells.join("")}</row>`);
     });
+    if (s.words?.length) report.wordLines(s.words).forEach((w) => line(w, STYLE.boldItalic, false));
     if (s.note) line(s.note, STYLE.italic, false);
   }
 
