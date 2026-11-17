@@ -34,19 +34,18 @@ function RevenueReport({ user }) {
       print={{
         formCode: "BC02-DT",
         period: `Từ ngày 01/01/${year} đến ngày 31/12/${year}`,
-        unit: "đồng",
         signerType: "finance",
         sections: [
           {
             columns: [
               { label: "Tháng", align: "left", width: 105 },
               { label: "Số hợp đồng quyết toán", align: "right", width: 90 },
-              { label: "Tiền thuê máy", align: "right" },
-              { label: "Phí vượt giờ", align: "right" },
-              { label: "Tiền bồi thường", align: "right" },
-              { label: "Doanh thu (chưa VAT)", align: "right" },
-              { label: "Thuế GTGT", align: "right" },
-              { label: "Tổng tiền thanh toán", align: "right" },
+              { label: "Tiền thuê máy (đồng)", align: "right" },
+              { label: "Phí vượt giờ (đồng)", align: "right" },
+              { label: "Tiền bồi thường (đồng)", align: "right" },
+              { label: "Doanh thu chưa VAT (đồng)", align: "right" },
+              { label: "Thuế GTGT (đồng)", align: "right" },
+              { label: "Tổng tiền thanh toán (đồng)", align: "right" },
             ],
             rows: [
               ...months.map((m) => ({
@@ -74,6 +73,10 @@ function RevenueReport({ user }) {
                   n(sum("revenue") + sum("vat")),
                 ],
               },
+            ],
+            words: [
+              ["Doanh thu cả năm chưa VAT", sum("revenue")],
+              ["Tổng tiền thanh toán cả năm", sum("revenue") + sum("vat")],
             ],
           },
         ],

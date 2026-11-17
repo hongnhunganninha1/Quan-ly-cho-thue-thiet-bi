@@ -22,7 +22,6 @@ function DebtReport({ user }) {
       print={{
         formCode: "BC05-CN",
         period: `Số liệu đến ngày ${formatDate(todayISO())}`,
-        unit: "đồng",
         signerType: "finance",
         sections: [
           {
@@ -32,8 +31,8 @@ function DebtReport({ user }) {
               { label: "Tên khách hàng", align: "left" },
               { label: "Điện thoại", align: "left", width: 95 },
               { label: "Số HĐ đã quyết toán", align: "right", width: 80 },
-              { label: "Còn phải thu", align: "right", width: 115 },
-              { label: "Còn phải hoàn cọc", align: "right", width: 115 },
+              { label: "Còn phải thu (đồng)", align: "right", width: 115 },
+              { label: "Còn phải hoàn cọc (đồng)", align: "right", width: 115 },
               { label: "Số lần trả máy trễ", align: "right", width: 75 },
             ],
             rows: [
@@ -42,6 +41,10 @@ function DebtReport({ user }) {
               })),
               { kind: "total", cells: ["Tổng cộng", "", "", n(customers.reduce((s, c) => s + Number(c.settled_contracts || 0), 0)), n(receivable), n(refund), ""] },
             ],
+            words: [
+              ["Tổng tiền khách còn phải thu", receivable],
+              ["Tổng tiền cọc còn phải hoàn", refund],
+            ],
           },
           {
             title: "II. CHI TIẾT CÁC KHOẢN QUYẾT TOÁN CHƯA THU ĐỦ",
@@ -49,9 +52,9 @@ function DebtReport({ user }) {
               { label: "Số hợp đồng", align: "left", width: 110 },
               { label: "Khách hàng", align: "left" },
               { label: "Ngày quyết toán", align: "center", width: 90 },
-              { label: "Số phải thu", align: "right", width: 110 },
-              { label: "Đã thu", align: "right", width: 110 },
-              { label: "Còn lại", align: "right", width: 110 },
+              { label: "Số phải thu (đồng)", align: "right", width: 110 },
+              { label: "Đã thu (đồng)", align: "right", width: 110 },
+              { label: "Còn lại (đồng)", align: "right", width: 110 },
               { label: "Tình trạng", align: "left", width: 110 },
             ],
             rows: [
@@ -83,6 +86,7 @@ function DebtReport({ user }) {
                   ]
                 : []),
             ],
+            words: open.length ? [["Tổng số tiền còn lại phải thu", open.reduce((s, x) => s + Number(x.amount_due - x.paid_amount), 0)]] : [],
           },
         ],
       }}

@@ -33,7 +33,6 @@ function ContractReport({ user }) {
       print={{
         formCode: "BC04-HD",
         period: `Từ ngày ${formatDate(filter.from)} đến ngày ${formatDate(filter.to)}${filter.status ? ` – Trạng thái: ${CONTRACT_STATUS[filter.status].label}` : ""}`,
-        unit: "đồng",
         sections: [
           {
             columns: [
@@ -42,8 +41,8 @@ function ContractReport({ user }) {
               { label: "Ngày bắt đầu", align: "center", width: 85 },
               { label: "Ngày kết thúc", align: "center", width: 85 },
               { label: "Hình thức thuê", align: "center", width: 80 },
-              { label: "Giá trị hợp đồng", align: "right", width: 120 },
-              { label: "Tiền đặt cọc", align: "right", width: 110 },
+              { label: "Giá trị hợp đồng (đồng)", align: "right", width: 120 },
+              { label: "Tiền đặt cọc (đồng)", align: "right", width: 110 },
               { label: "Tình trạng", align: "left", width: 120 },
             ],
             rows: [
@@ -72,6 +71,10 @@ function ContractReport({ user }) {
                   "",
                 ],
               },
+            ],
+            words: [
+              ["Tổng giá trị hợp đồng", totalValue],
+              ["Tổng tiền đặt cọc", counted.reduce((s, r) => s + Number(r.deposit_amount || 0), 0)],
             ],
           },
         ],

@@ -1,6 +1,6 @@
 import logo from "../../assets/logo.png";
 import { todayISO } from "../../utils/format";
-import { COMPANY, SIGNERS, rowNumbers } from "../../utils/reportInfo";
+import { COMPANY, SIGNERS, rowNumbers, wordLines } from "../../utils/reportInfo";
 
 // Dòng ký hiệu cột theo mẫu biểu Việt Nam: cột chữ ghi A, B, C…; cột số ghi 1, 2, 3…
 function columnMarks(columns) {
@@ -10,7 +10,8 @@ function columnMarks(columns) {
 }
 
 // Một bảng trong báo cáo in. rows: [{ cells: [...], kind?: "group" | "total" }]
-function PrintTable({ title, columns, rows, note }) {
+// words: [[nhãn, số tiền], ...] – các số tiền tổng được đọc bằng chữ ngay dưới bảng
+function PrintTable({ title, columns, rows, note, words }) {
   const stt = rowNumbers(rows);
   return (
     <section className="ps-section">
@@ -51,6 +52,11 @@ function PrintTable({ title, columns, rows, note }) {
           ))}
         </tbody>
       </table>
+      {wordLines(words).map((w) => (
+        <p key={w} className="ps-words">
+          {w}
+        </p>
+      ))}
       {note && <p className="ps-note">{note}</p>}
     </section>
   );

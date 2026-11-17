@@ -454,6 +454,14 @@
     font-style: italic;
   }
 
+  /* Số tiền bằng chữ dưới bảng */
+  .ps-words {
+    margin-top: 5px;
+    font-size: 11.5pt;
+    font-weight: 700;
+    font-style: italic;
+  }
+
   .ps-note {
     margin-top: 6px;
     font-size: 11pt;

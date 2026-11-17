@@ -6,7 +6,7 @@ import PrintSheet from "./PrintSheet";
 import logo from "../../assets/logo.png";
 import { todayISO } from "../../utils/format";
 import { exportReportExcel } from "../../utils/exportExcel";
-import { COMPANY, SIGNERS, rowNumbers } from "../../utils/reportInfo";
+import { COMPANY, SIGNERS, rowNumbers, wordLines } from "../../utils/reportInfo";
 
 // Bỏ dấu tiếng Việt để đặt tên file: "Báo cáo công nợ" → "bao-cao-cong-no"
 const slug = (text) =>
@@ -34,6 +34,7 @@ function ReportShell({ title, user, filters, print, children }) {
         signers: SIGNERS[print.signerType || "operation"],
         preparedBy: user?.name,
         rowNumbers,
+        wordLines,
         logoUrl: logo,
       },
       `${slug(title)}-${todayISO()}.xlsx`,
