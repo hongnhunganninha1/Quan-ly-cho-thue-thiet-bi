@@ -66,8 +66,14 @@ function PrintSheet({ title, formCode, period, unit, sections, notes = [], signe
   const signers = SIGNERS[signerType];
   return (
     <div className="print-only print-sheet">
-      {/* Khổ giấy của báo cáo này */}
-      <style>{`@media print { @page { size: A4 ${orientation}; margin: 14mm 12mm; } }`}</style>
+      {/* Khổ giấy của báo cáo này. Khai báo các ô lề trang (@top-…, @bottom-…) để trình duyệt không in
+          tiêu đề / đường dẫn / ngày giờ ở đầu và chân trang; chỉ giữ số trang ở giữa chân trang. */}
+      <style>{`@media print { @page {
+        size: A4 ${orientation}; margin: 14mm 12mm 14mm 12mm;
+        @top-left { content: ""; } @top-center { content: ""; } @top-right { content: ""; }
+        @bottom-left { content: ""; } @bottom-right { content: ""; }
+        @bottom-center { content: counter(page); font-family: "Times New Roman", Times, serif; font-size: 11pt; }
+      } }`}</style>
 
       <header className="ps-head">
         <div className="ps-brand">

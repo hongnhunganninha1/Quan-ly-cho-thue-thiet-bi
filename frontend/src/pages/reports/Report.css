@@ -274,7 +274,7 @@
   .print-sheet {
     --ps-navy: #1f3b63; /* xanh đậm theo logo Comacpro */
     --ps-orange: #ef7d2d; /* cam theo logo Comacpro */
-    --ps-line: #7d8ca3;
+    --ps-line: #2b3a4f; /* đường kẻ bảng: đậm, rõ khi in */
     color: #000;
     -webkit-print-color-adjust: exact; /* in cả màu nền (tiêu đề bảng, dòng tổng) */
     print-color-adjust: exact;
@@ -367,16 +367,23 @@
   }
 
   /* Bảng kẻ ô đầy đủ */
+  /* Kẻ ô kiểu "separate" (mỗi ô tự vẽ cạnh phải + dưới, bảng vẽ cạnh trên + trái):
+     tránh lỗi Chrome làm mất đường kẻ dưới các ô có tô nền khi in */
   .ps-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-top: 1px solid var(--ps-line);
+    border-left: 1px solid var(--ps-line);
     font-size: 11pt;
   }
 
   .ps-table th,
   .ps-table td {
     padding: 3px 6px;
-    border: 1px solid var(--ps-line);
+    border: 0;
+    border-right: 1px solid var(--ps-line);
+    border-bottom: 1px solid var(--ps-line);
     vertical-align: middle;
   }
 
