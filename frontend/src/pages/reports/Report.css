@@ -272,7 +272,12 @@
   }
 
   .print-sheet {
+    --ps-navy: #1f3b63; /* xanh đậm theo logo Comacpro */
+    --ps-orange: #ef7d2d; /* cam theo logo Comacpro */
+    --ps-line: #7d8ca3;
     color: #000;
+    -webkit-print-color-adjust: exact; /* in cả màu nền (tiêu đề bảng, dòng tổng) */
+    print-color-adjust: exact;
     font-family: "Times New Roman", Times, serif;
     font-size: 12.5pt;
     line-height: 1.35;
@@ -282,7 +287,21 @@
   .ps-head {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     gap: 24px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--ps-navy);
+  }
+
+  .ps-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ps-logo {
+    height: 17mm;
+    width: auto;
   }
 
   .ps-company,
@@ -294,6 +313,7 @@
 
   .ps-company strong {
     font-size: 12pt;
+    color: var(--ps-navy);
   }
 
   .ps-form {
@@ -312,10 +332,13 @@
   }
 
   .ps-title h1 {
+    display: inline-block;
+    padding-bottom: 3px;
     font-size: 17pt;
     font-weight: 700;
-    color: #000;
+    color: var(--ps-navy);
     letter-spacing: 0.3px;
+    border-bottom: 2.5px solid var(--ps-orange);
   }
 
   .ps-title p {
@@ -336,9 +359,11 @@
 
   .ps-section-title {
     margin: 8px 0 4px;
+    padding-left: 7px;
     font-size: 12.5pt;
     font-weight: 700;
-    color: #000;
+    color: var(--ps-navy);
+    border-left: 4px solid var(--ps-orange);
   }
 
   /* Bảng kẻ ô đầy đủ */
@@ -351,7 +376,7 @@
   .ps-table th,
   .ps-table td {
     padding: 3px 6px;
-    border: 1px solid #000;
+    border: 1px solid var(--ps-line);
     vertical-align: middle;
   }
 
@@ -362,7 +387,8 @@
   .ps-table th {
     font-weight: 700;
     text-align: center;
-    background: #f2f2f2;
+    color: #fff;
+    background: var(--ps-navy);
   }
 
   .ps-table tr.ps-marks th {
@@ -370,7 +396,8 @@
     font-weight: 400;
     font-style: italic;
     font-size: 10pt;
-    background: #fff;
+    color: var(--ps-navy);
+    background: #e8eef6;
   }
 
   .ps-table tr {
@@ -390,13 +417,21 @@
     text-align: center;
   }
 
+  /* Dòng thường xen kẽ nền nhạt cho dễ dò; dòng nhóm xanh nhạt; dòng tổng cam nhạt */
+  .ps-table tbody tr:nth-child(even) td {
+    background: #f6f8fb;
+  }
+
   .ps-table tr.ps-group td {
     font-weight: 700;
+    color: var(--ps-navy);
+    background: #e3eaf4 !important;
   }
 
   .ps-table tr.ps-total td {
     font-weight: 700;
-    background: #f2f2f2;
+    color: #9a3f06;
+    background: #fdebdd !important;
   }
 
   .ps-empty {
@@ -432,6 +467,10 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+  }
+
+  .ps-sign-cols strong {
+    color: var(--ps-navy);
   }
 
   .ps-sign-cols em {
@@ -591,7 +630,7 @@
   min-width: 170px;
 }
 
-/* Nút Xuất file Excel / Xuất file PDF ở đầu trang báo cáo */
+/* Nút Xuất Excel / Xuất PDF ở đầu trang báo cáo */
 .report-actions {
   display: flex;
   flex-wrap: wrap;

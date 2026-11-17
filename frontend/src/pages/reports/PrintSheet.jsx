@@ -1,3 +1,4 @@
+import logo from "../../assets/logo.png";
 import { todayISO } from "../../utils/format";
 import { COMPANY, SIGNERS, rowNumbers } from "../../utils/reportInfo";
 
@@ -56,7 +57,7 @@ function PrintTable({ title, columns, rows, note }) {
 }
 
 // Bản báo cáo để in / xuất PDF theo cách trình bày báo cáo thường dùng ở doanh nghiệp Việt Nam:
-// tên đơn vị + mẫu số ở đầu trang, tiêu đề in hoa ở giữa, kỳ báo cáo, đơn vị tính,
+// logo + tên đơn vị + mẫu số ở đầu trang, tiêu đề in hoa ở giữa, kỳ báo cáo, đơn vị tính,
 // bảng kẻ ô đầy đủ (có dòng ký hiệu cột A, B, 1, 2…), ngày lập và chỗ ký của các chức danh.
 // Chỉ hiện khi in (CSS .print-only); màn hình vẫn dùng giao diện web bình thường.
 // signerType: "finance" | "operation"
@@ -69,10 +70,13 @@ function PrintSheet({ title, formCode, period, unit, sections, notes = [], signe
       <style>{`@media print { @page { size: A4 ${orientation}; margin: 14mm 12mm; } }`}</style>
 
       <header className="ps-head">
-        <div className="ps-company">
-          <strong>{COMPANY.name}</strong>
-          <span>Địa chỉ: {COMPANY.address}</span>
-          <span>Mã số thuế: {COMPANY.taxCode}</span>
+        <div className="ps-brand">
+          <img className="ps-logo" src={logo} alt="Logo Comacpro" />
+          <div className="ps-company">
+            <strong>{COMPANY.name}</strong>
+            <span>Địa chỉ: {COMPANY.address}</span>
+            <span>Mã số thuế: {COMPANY.taxCode}</span>
+          </div>
         </div>
         <div className="ps-form">
           <strong>Mẫu số: {formCode}</strong>

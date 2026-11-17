@@ -3,6 +3,7 @@ import "../equipment/Equipment.css";
 import "../rent/Rent.css";
 import "./Report.css";
 import PrintSheet from "./PrintSheet";
+import logo from "../../assets/logo.png";
 import { todayISO } from "../../utils/format";
 import { exportReportExcel } from "../../utils/exportExcel";
 import { COMPANY, SIGNERS, rowNumbers } from "../../utils/reportInfo";
@@ -33,6 +34,7 @@ function ReportShell({ title, user, filters, print, children }) {
         signers: SIGNERS[print.signerType || "operation"],
         preparedBy: user?.name,
         rowNumbers,
+        logoUrl: logo,
       },
       `${slug(title)}-${todayISO()}.xlsx`,
     );
@@ -64,7 +66,7 @@ function ReportShell({ title, user, filters, print, children }) {
             disabled={!print}
             title={print ? "Tải báo cáo về dạng file Excel (.xlsx)" : "Đang tải số liệu…"}
           >
-            Xuất file Excel
+            Xuất Excel
           </button>
           <button
             className="btn btn-primary"
@@ -72,7 +74,7 @@ function ReportShell({ title, user, filters, print, children }) {
             disabled={!print}
             title={print ? "Xuất báo cáo theo mẫu A4: chọn \"Lưu dưới dạng PDF\" trong hộp thoại in" : "Đang tải số liệu…"}
           >
-            Xuất file PDF
+            Xuất PDF
           </button>
         </div>
       </div>
