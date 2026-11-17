@@ -590,3 +590,10 @@
 .report-charts .donut-legend {
   min-width: 170px;
 }
+
+/* Nút Xuất file Excel / Xuất file PDF ở đầu trang báo cáo */
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

@@ -18,11 +18,11 @@ const slug = (text) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
-// Khung chung của một báo cáo: tiêu đề, bộ lọc, nút xuất Excel và nội dung.
+// Khung chung của một báo cáo: tiêu đề, bộ lọc, nút Xuất Excel / Xuất PDF và nội dung.
 // user: người đang đăng nhập (ký "Người lập biểu").
 // print: nội dung báo cáo theo mẫu – { formCode, period, unit, sections, notes, signerType, orientation }.
 //   Dùng để xuất file Excel (cùng mẫu: thông tin công ty, tiêu đề, kỳ báo cáo, bảng, chỗ ký)
-//   và để in khi người dùng bấm Ctrl + P (giao diện web được ẩn, chỉ in bản báo cáo).
+//   và để xuất PDF / in (giao diện web được ẩn, chỉ in bản báo cáo theo mẫu A4).
 function ReportShell({ title, user, filters, print, children }) {
   const exportFile = () => {
     exportReportExcel(
@@ -38,20 +38,43 @@ function ReportShell({ title, user, filters, print, children }) {
     );
   };
 
+  // Xuất PDF: mở hộp thoại in của trình duyệt với bản báo cáo theo mẫu; chọn "Lưu dưới dạng PDF"
+  // (Save as PDF) để tải file. Tên file gợi ý lấy theo tên báo cáo + ngày.
+  const exportPdf = () => {
+    const oldTitle = document.title;
+    document.title = `${slug(title)}-${todayISO()}`;
+    const restore = () => {
+      document.title = oldTitle;
+      window.removeEventListener("afterprint", restore);
+    };
+    window.addEventListener("afterprint", restore);
+    window.print();
+  };
+
   return (
     <div className="catalog report">
       <div className="page-heading no-print">
         <div>
           <h1>{title}</h1>
         </div>
-        <button
-          className="btn btn-accent"
-          onClick={exportFile}
-          disabled={!print}
-          title={print ? "Tải báo cáo về dạng file Excel (.xlsx)" : "Đang tải số liệu…"}
-        >
-          Xuất Excel
-        </button>
+        <div className="report-actions">
+          <button
+            className="btn btn-accent"
+            onClick={exportFile}
+            disabled={!print}
+            title={print ? "Tải báo cáo về dạng file Excel (.xlsx)" : "Đang tải số liệu…"}
+          >
+            Xuất file Excel
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={exportPdf}
+            disabled={!print}
+            title={print ? "Xuất báo cáo theo mẫu A4: chọn \"Lưu dưới dạng PDF\" trong hộp thoại in" : "Đang tải số liệu…"}
+          >
+            Xuất file PDF
+          </button>
+        </div>
       </div>
 
       {filters && <section className="catalog-card no-print">{filters}</section>}
