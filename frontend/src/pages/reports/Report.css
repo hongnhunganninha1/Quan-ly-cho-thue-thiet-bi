@@ -367,14 +367,13 @@
   }
 
   /* Bảng kẻ ô đầy đủ */
-  /* Kẻ ô kiểu "separate" (mỗi ô tự vẽ cạnh phải + dưới, bảng vẽ cạnh trên + trái):
-     tránh lỗi Chrome làm mất đường kẻ dưới các ô có tô nền khi in */
+  /* Kẻ ô kiểu "separate": mỗi đường kẻ chỉ do đúng một ô vẽ (cạnh phải + dưới; ô đầu dòng vẽ thêm cạnh trái,
+     dòng tiêu đề vẽ thêm cạnh trên) nên mọi đường dày như nhau, không có đường chồng lên nhau, không mất đường
+     ở ô tô nền và không thừa đường kẻ khi bảng sang trang (bảng không tự vẽ viền) */
   .ps-table {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    border-top: 1px solid var(--ps-line);
-    border-left: 1px solid var(--ps-line);
     font-size: 11pt;
   }
 
@@ -385,6 +384,19 @@
     border-right: 1px solid var(--ps-line);
     border-bottom: 1px solid var(--ps-line);
     vertical-align: middle;
+  }
+
+  .ps-table tr > :first-child {
+    border-left: 1px solid var(--ps-line);
+  }
+
+  .ps-table thead tr:first-child th {
+    border-top: 1px solid var(--ps-line);
+  }
+
+  /* Dòng tiêu đề cột nền xanh đậm: vạch ngăn giữa các cột màu sáng để nhìn rõ */
+  .ps-table thead tr:first-child th:not(:last-child) {
+    border-right-color: #c9d4e3;
   }
 
   .ps-table thead {
@@ -424,11 +436,7 @@
     text-align: center;
   }
 
-  /* Dòng thường xen kẽ nền nhạt cho dễ dò; dòng nhóm xanh nhạt; dòng tổng cam nhạt */
-  .ps-table tbody tr:nth-child(even) td {
-    background: #f6f8fb;
-  }
-
+  /* Dòng nhóm nền xanh nhạt; dòng tổng nền cam nhạt (dòng thường để nền trắng cho đường kẻ đều, rõ) */
   .ps-table tr.ps-group td {
     font-weight: 700;
     color: var(--ps-navy);
